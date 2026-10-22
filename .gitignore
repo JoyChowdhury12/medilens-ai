@@ -1,0 +1,39 @@
+# secrets and local config
+.env
+.env.*
+!.env.example
+
+# dependencies and build output
+node_modules/
+.next/
+dist/
+build/
+out/
+venv/
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+*.tsbuildinfo
+next-env.d.ts
+
+# user data: never commit real patients' reports
+backend/uploads/
+uploads/
+dataset/synthetic/
+dataset/finetune/
+dataset/real/
+
+# model files (large)
+*.gguf
+*.safetensors
+*.bin
+training/output/
+training/checkpoints/
+
+# misc
+*.log
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

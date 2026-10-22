@@ -1,0 +1,939 @@
+{
+ "_note": "Adult reference ranges commonly used by labs. Labs differ, so the range PRINTED on a report always takes priority. Have a medical reviewer check every range before real use.",
+ "tests": [
+  {
+   "code": "hemoglobin",
+   "name": "Hemoglobin",
+   "bn": "হিমোগ্লোবিন",
+   "group": "blood",
+   "unit": "g/dL",
+   "aliases": [
+    "hemoglobin",
+    "haemoglobin",
+    "hb",
+    "hgb",
+    "hb%"
+   ],
+   "range": {
+    "male": [
+     13.0,
+     17.0
+    ],
+    "female": [
+     12.0,
+     15.5
+    ]
+   },
+   "critical": [
+    7.0,
+    20.0
+   ]
+  },
+  {
+   "code": "wbc",
+   "name": "White blood cells",
+   "bn": "শ্বেত রক্তকণিকা (WBC)",
+   "group": "blood",
+   "unit": "x10^9/L",
+   "aliases": [
+    "wbc",
+    "wbc total",
+    "total wbc count",
+    "total count",
+    "tc",
+    "white blood cells",
+    "total leucocyte count",
+    "tlc",
+    "wbc count",
+    "white blood cell count",
+    "total leukocyte count"
+   ],
+   "range": {
+    "any": [
+     4.0,
+     11.0
+    ]
+   },
+   "critical": [
+    2.0,
+    30.0
+   ]
+  },
+  {
+   "code": "platelets",
+   "name": "Platelets",
+   "bn": "প্লাটিলেট",
+   "group": "blood",
+   "unit": "x10^9/L",
+   "aliases": [
+    "platelets",
+    "platelet count",
+    "platelet",
+    "plt",
+    "total platelet count"
+   ],
+   "range": {
+    "any": [
+     150,
+     450
+    ]
+   },
+   "critical": [
+    50,
+    1000
+   ]
+  },
+  {
+   "code": "rbc",
+   "name": "Red blood cells",
+   "bn": "লোহিত রক্তকণিকা (RBC)",
+   "group": "blood",
+   "unit": "x10^12/L",
+   "aliases": [
+    "rbc",
+    "rbc count",
+    "red blood cells",
+    "total rbc",
+    "total rbc count",
+    "rbc total",
+    "red blood cell count"
+   ],
+   "range": {
+    "male": [
+     4.5,
+     5.5
+    ],
+    "female": [
+     3.8,
+     4.8
+    ]
+   }
+  },
+  {
+   "code": "hematocrit",
+   "name": "Hematocrit (PCV)",
+   "bn": "হিমাটোক্রিট (PCV)",
+   "group": "blood",
+   "unit": "%",
+   "aliases": [
+    "hematocrit",
+    "haematocrit",
+    "pcv",
+    "hct",
+    "packed cell volume",
+    "haematocrit pcv",
+    "hct pcv"
+   ],
+   "range": {
+    "male": [
+     40,
+     50
+    ],
+    "female": [
+     36,
+     46
+    ]
+   }
+  },
+  {
+   "code": "mcv",
+   "name": "MCV",
+   "bn": "MCV (লোহিত কণিকার আকার)",
+   "group": "blood",
+   "unit": "fL",
+   "aliases": [
+    "mcv",
+    "mean corpuscular volume",
+    "mean cell volume"
+   ],
+   "range": {
+    "any": [
+     80,
+     100
+    ]
+   }
+  },
+  {
+   "code": "mch",
+   "name": "MCH",
+   "bn": "MCH",
+   "group": "blood",
+   "unit": "pg",
+   "aliases": [
+    "mch",
+    "mean corpuscular hemoglobin",
+    "mean corpuscular haemoglobin",
+    "mean cell hemoglobin"
+   ],
+   "range": {
+    "any": [
+     27,
+     32
+    ]
+   }
+  },
+  {
+   "code": "mchc",
+   "name": "MCHC",
+   "bn": "MCHC",
+   "group": "blood",
+   "unit": "g/dL",
+   "aliases": [
+    "mchc",
+    "mean corpuscular hemoglobin concentration",
+    "mean corpuscular haemoglobin concentration"
+   ],
+   "range": {
+    "any": [
+     31.5,
+     34.5
+    ]
+   }
+  },
+  {
+   "code": "neutrophils",
+   "name": "Neutrophils",
+   "bn": "নিউট্রোফিল",
+   "group": "blood",
+   "unit": "%",
+   "aliases": [
+    "neutrophils",
+    "neutrophil",
+    "neut"
+   ],
+   "range": {
+    "any": [
+     40,
+     75
+    ]
+   }
+  },
+  {
+   "code": "lymphocytes",
+   "name": "Lymphocytes",
+   "bn": "লিম্ফোসাইট",
+   "group": "blood",
+   "unit": "%",
+   "aliases": [
+    "lymphocytes",
+    "lymphocyte",
+    "lymph"
+   ],
+   "range": {
+    "any": [
+     20,
+     45
+    ]
+   }
+  },
+  {
+   "code": "eosinophils",
+   "name": "Eosinophils",
+   "bn": "ইওসিনোফিল",
+   "group": "blood",
+   "unit": "%",
+   "aliases": [
+    "eosinophils",
+    "eosinophil",
+    "eos"
+   ],
+   "range": {
+    "any": [
+     1,
+     6
+    ]
+   }
+  },
+  {
+   "code": "monocytes",
+   "name": "Monocytes",
+   "bn": "মনোসাইট",
+   "group": "blood",
+   "unit": "%",
+   "aliases": [
+    "monocytes",
+    "monocyte",
+    "mono"
+   ],
+   "range": {
+    "any": [
+     2,
+     10
+    ]
+   }
+  },
+  {
+   "code": "basophils",
+   "name": "Basophils",
+   "bn": "বেসোফিল",
+   "group": "blood",
+   "unit": "%",
+   "aliases": [
+    "basophils",
+    "basophil",
+    "baso"
+   ],
+   "range": {
+    "any": [
+     0,
+     2
+    ]
+   }
+  },
+  {
+   "code": "rdw",
+   "name": "RDW",
+   "bn": "RDW (লোহিত কণিকার আকারের পার্থক্য)",
+   "group": "blood",
+   "unit": "%",
+   "aliases": [
+    "rdw",
+    "rdw cv",
+    "rdw-cv",
+    "red cell distribution width"
+   ],
+   "range": {
+    "any": [
+     11.6,
+     14.0
+    ]
+   }
+  },
+  {
+   "code": "esr",
+   "name": "ESR",
+   "bn": "ESR",
+   "group": "blood",
+   "unit": "mm/1st hr",
+   "aliases": [
+    "esr",
+    "e.s.r",
+    "erythrocyte sedimentation rate"
+   ],
+   "range": {
+    "male": [
+     0,
+     15
+    ],
+    "female": [
+     0,
+     20
+    ]
+   }
+  },
+  {
+   "code": "fbs",
+   "name": "Fasting blood sugar",
+   "bn": "খালি পেটে রক্তে শর্করা",
+   "group": "diabetes",
+   "unit": "mmol/L",
+   "aliases": [
+    "fbs",
+    "fasting blood sugar",
+    "fasting sugar",
+    "fasting blood glucose",
+    "fbg",
+    "fpg",
+    "fasting plasma glucose",
+    "blood sugar fasting",
+    "glucose fasting"
+   ],
+   "range": {
+    "any": [
+     3.9,
+     6.1
+    ]
+   },
+   "critical": [
+    2.8,
+    25.0
+   ]
+  },
+  {
+   "code": "rbs",
+   "name": "Random blood sugar",
+   "bn": "র‍্যান্ডম রক্তে শর্করা",
+   "group": "diabetes",
+   "unit": "mmol/L",
+   "aliases": [
+    "rbs",
+    "random blood sugar",
+    "random blood glucose",
+    "blood sugar random",
+    "glucose random"
+   ],
+   "range": {
+    "any": [
+     3.9,
+     7.8
+    ]
+   },
+   "critical": [
+    2.8,
+    25.0
+   ]
+  },
+  {
+   "code": "sugar_2h",
+   "name": "Blood sugar 2 hours after breakfast",
+   "bn": "নাস্তার ২ ঘণ্টা পর রক্তে শর্করা",
+   "group": "diabetes",
+   "unit": "mmol/L",
+   "aliases": [
+    "2hrs abf",
+    "2 hrs abf",
+    "blood sugar 2 hrs abf",
+    "blood sugar 2hrs abf",
+    "sugar 2 hrs abf",
+    "2h abf",
+    "2hr abf",
+    "blood sugar 2 hours after breakfast",
+    "2 hours after breakfast",
+    "pp blood sugar",
+    "ppbs",
+    "2hpp"
+   ],
+   "range": {
+    "any": [
+     3.9,
+     7.8
+    ]
+   },
+   "critical": [
+    2.8,
+    25.0
+   ]
+  },
+  {
+   "code": "hba1c",
+   "name": "HbA1c",
+   "bn": "HbA1c (৩ মাসের গড় শর্করা)",
+   "group": "diabetes",
+   "unit": "%",
+   "aliases": [
+    "hba1c",
+    "hbalc",
+    "hbaic",
+    "hba1 c",
+    "hb a1c",
+    "hb alc",
+    "glycated hemoglobin",
+    "glycosylated hemoglobin",
+    "a1c"
+   ],
+   "range": {
+    "any": [
+     4.0,
+     5.6
+    ]
+   },
+   "borderline_to": 6.4
+  },
+  {
+   "code": "cholesterol",
+   "name": "Total cholesterol",
+   "bn": "মোট কোলেস্টেরল",
+   "group": "lipid",
+   "unit": "mg/dL",
+   "aliases": [
+    "total cholesterol",
+    "cholesterol total",
+    "cholesterol",
+    "s cholesterol",
+    "serum cholesterol",
+    "t chol"
+   ],
+   "range": {
+    "any": [
+     0,
+     200
+    ]
+   },
+   "borderline_to": 240
+  },
+  {
+   "code": "ldl",
+   "name": "LDL cholesterol",
+   "bn": "LDL (খারাপ কোলেস্টেরল)",
+   "group": "lipid",
+   "unit": "mg/dL",
+   "aliases": [
+    "ldl",
+    "ldl cholesterol",
+    "ldl c",
+    "ldl-c",
+    "low density lipoprotein"
+   ],
+   "range": {
+    "any": [
+     0,
+     130
+    ]
+   },
+   "borderline_to": 160
+  },
+  {
+   "code": "hdl",
+   "name": "HDL cholesterol",
+   "bn": "HDL (ভালো কোলেস্টেরল)",
+   "group": "lipid",
+   "unit": "mg/dL",
+   "aliases": [
+    "hdl",
+    "hdl cholesterol",
+    "hdl c",
+    "hdl-c",
+    "high density lipoprotein"
+   ],
+   "range": {
+    "male": [
+     40,
+     null
+    ],
+    "female": [
+     50,
+     null
+    ]
+   }
+  },
+  {
+   "code": "triglycerides",
+   "name": "Triglycerides",
+   "bn": "ট্রাইগ্লিসারাইড",
+   "group": "lipid",
+   "unit": "mg/dL",
+   "aliases": [
+    "triglycerides",
+    "triglyceride",
+    "tg",
+    "s triglyceride",
+    "serum triglyceride"
+   ],
+   "range": {
+    "any": [
+     0,
+     150
+    ]
+   },
+   "borderline_to": 200
+  },
+  {
+   "code": "creatinine",
+   "name": "Serum creatinine",
+   "bn": "সিরাম ক্রিয়েটিনিন",
+   "group": "kidney",
+   "unit": "mg/dL",
+   "aliases": [
+    "creatinine",
+    "s creatinine",
+    "serum creatinine",
+    "s. creatinine",
+    "creat"
+   ],
+   "range": {
+    "male": [
+     0.7,
+     1.3
+    ],
+    "female": [
+     0.6,
+     1.1
+    ]
+   }
+  },
+  {
+   "code": "urea",
+   "name": "Blood urea",
+   "bn": "রক্তে ইউরিয়া",
+   "group": "kidney",
+   "unit": "mg/dL",
+   "aliases": [
+    "urea",
+    "blood urea",
+    "s urea",
+    "serum urea"
+   ],
+   "range": {
+    "any": [
+     15,
+     40
+    ]
+   }
+  },
+  {
+   "code": "uric_acid",
+   "name": "Uric acid",
+   "bn": "ইউরিক অ্যাসিড",
+   "group": "kidney",
+   "unit": "mg/dL",
+   "aliases": [
+    "uric acid",
+    "s uric acid",
+    "serum uric acid"
+   ],
+   "range": {
+    "male": [
+     3.4,
+     7.0
+    ],
+    "female": [
+     2.4,
+     6.0
+    ]
+   }
+  },
+  {
+   "code": "sodium",
+   "name": "Sodium",
+   "bn": "সোডিয়াম",
+   "group": "electrolyte",
+   "unit": "mmol/L",
+   "aliases": [
+    "sodium",
+    "na",
+    "na+",
+    "s sodium",
+    "serum sodium"
+   ],
+   "range": {
+    "any": [
+     135,
+     145
+    ]
+   },
+   "critical": [
+    120,
+    160
+   ]
+  },
+  {
+   "code": "potassium",
+   "name": "Potassium",
+   "bn": "পটাশিয়াম",
+   "group": "electrolyte",
+   "unit": "mmol/L",
+   "aliases": [
+    "potassium",
+    "k",
+    "k+",
+    "s potassium",
+    "serum potassium"
+   ],
+   "range": {
+    "any": [
+     3.5,
+     5.1
+    ]
+   },
+   "critical": [
+    2.5,
+    6.5
+   ]
+  },
+  {
+   "code": "chloride",
+   "name": "Chloride",
+   "bn": "ক্লোরাইড",
+   "group": "electrolyte",
+   "unit": "mmol/L",
+   "aliases": [
+    "chloride",
+    "cl",
+    "cl-",
+    "s chloride",
+    "serum chloride"
+   ],
+   "range": {
+    "any": [
+     98,
+     107
+    ]
+   }
+  },
+  {
+   "code": "calcium",
+   "name": "Calcium",
+   "bn": "ক্যালসিয়াম",
+   "group": "electrolyte",
+   "unit": "mg/dL",
+   "aliases": [
+    "calcium",
+    "s calcium",
+    "serum calcium",
+    "ca"
+   ],
+   "range": {
+    "any": [
+     8.6,
+     10.2
+    ]
+   }
+  },
+  {
+   "code": "alt",
+   "name": "ALT (SGPT)",
+   "bn": "ALT (SGPT)",
+   "group": "liver",
+   "unit": "U/L",
+   "aliases": [
+    "alt",
+    "sgpt",
+    "sgpt alt",
+    "alt sgpt",
+    "s gpt",
+    "alanine aminotransferase",
+    "alanine transaminase"
+   ],
+   "range": {
+    "male": [
+     0,
+     41
+    ],
+    "female": [
+     0,
+     33
+    ]
+   }
+  },
+  {
+   "code": "ast",
+   "name": "AST (SGOT)",
+   "bn": "AST (SGOT)",
+   "group": "liver",
+   "unit": "U/L",
+   "aliases": [
+    "ast",
+    "sgot",
+    "sgot ast",
+    "ast sgot",
+    "aspartate aminotransferase"
+   ],
+   "range": {
+    "male": [
+     0,
+     40
+    ],
+    "female": [
+     0,
+     32
+    ]
+   }
+  },
+  {
+   "code": "alp",
+   "name": "Alkaline phosphatase",
+   "bn": "অ্যালকালাইন ফসফাটেজ (ALP)",
+   "group": "liver",
+   "unit": "U/L",
+   "aliases": [
+    "alp",
+    "alkaline phosphatase",
+    "s alkaline phosphatase"
+   ],
+   "range": {
+    "any": [
+     40,
+     130
+    ]
+   }
+  },
+  {
+   "code": "bilirubin",
+   "name": "Total bilirubin",
+   "bn": "মোট বিলিরুবিন",
+   "group": "liver",
+   "unit": "mg/dL",
+   "aliases": [
+    "bilirubin",
+    "total bilirubin",
+    "s bilirubin",
+    "serum bilirubin",
+    "bilirubin total"
+   ],
+   "range": {
+    "any": [
+     0.1,
+     1.2
+    ]
+   },
+   "critical": [
+    null,
+    15.0
+   ]
+  },
+  {
+   "code": "albumin",
+   "name": "Albumin",
+   "bn": "অ্যালবুমিন",
+   "group": "liver",
+   "unit": "g/dL",
+   "aliases": [
+    "albumin",
+    "s albumin",
+    "serum albumin"
+   ],
+   "range": {
+    "any": [
+     3.5,
+     5.2
+    ]
+   }
+  },
+  {
+   "code": "total_protein",
+   "name": "Total protein",
+   "bn": "মোট প্রোটিন",
+   "group": "liver",
+   "unit": "g/dL",
+   "aliases": [
+    "total protein",
+    "s total protein",
+    "serum protein",
+    "protein total"
+   ],
+   "range": {
+    "any": [
+     6.4,
+     8.3
+    ]
+   }
+  },
+  {
+   "code": "tsh",
+   "name": "TSH",
+   "bn": "TSH (থাইরয়েড হরমোন নিয়ন্ত্রক)",
+   "group": "thyroid",
+   "unit": "mIU/L",
+   "aliases": [
+    "tsh",
+    "s tsh",
+    "thyroid stimulating hormone"
+   ],
+   "range": {
+    "any": [
+     0.4,
+     4.0
+    ]
+   }
+  },
+  {
+   "code": "ft4",
+   "name": "Free T4",
+   "bn": "ফ্রি T4",
+   "group": "thyroid",
+   "unit": "ng/dL",
+   "aliases": [
+    "ft4",
+    "free t4",
+    "free thyroxine",
+    "f t4"
+   ],
+   "range": {
+    "any": [
+     0.9,
+     1.7
+    ]
+   }
+  },
+  {
+   "code": "ft3",
+   "name": "Free T3",
+   "bn": "ফ্রি T3",
+   "group": "thyroid",
+   "unit": "pg/mL",
+   "aliases": [
+    "ft3",
+    "free t3",
+    "free triiodothyronine",
+    "f t3"
+   ],
+   "range": {
+    "any": [
+     2.0,
+     4.4
+    ]
+   }
+  },
+  {
+   "code": "vitamin_d",
+   "name": "Vitamin D",
+   "bn": "ভিটামিন ডি",
+   "group": "vitamin",
+   "unit": "ng/mL",
+   "aliases": [
+    "vitamin d",
+    "vit d",
+    "25 oh vitamin d",
+    "25-oh vitamin d",
+    "vitamin d3",
+    "25 hydroxy vitamin d"
+   ],
+   "range": {
+    "any": [
+     30,
+     100
+    ]
+   },
+   "borderline_from": 20
+  },
+  {
+   "code": "vitamin_b12",
+   "name": "Vitamin B12",
+   "bn": "ভিটামিন বি১২",
+   "group": "vitamin",
+   "unit": "pg/mL",
+   "aliases": [
+    "vitamin b12",
+    "vit b12",
+    "b12",
+    "cobalamin"
+   ],
+   "range": {
+    "any": [
+     200,
+     900
+    ]
+   }
+  },
+  {
+   "code": "ferritin",
+   "name": "Ferritin",
+   "bn": "ফেরিটিন (আয়রনের মজুত)",
+   "group": "blood",
+   "unit": "ng/mL",
+   "aliases": [
+    "ferritin",
+    "s ferritin",
+    "serum ferritin"
+   ],
+   "range": {
+    "male": [
+     30,
+     400
+    ],
+    "female": [
+     15,
+     150
+    ]
+   }
+  },
+  {
+   "code": "crp",
+   "name": "CRP",
+   "bn": "CRP (প্রদাহের মাত্রা)",
+   "group": "inflammation",
+   "unit": "mg/L",
+   "aliases": [
+    "crp",
+    "c reactive protein",
+    "c-reactive protein"
+   ],
+   "range": {
+    "any": [
+     0,
+     5
+    ]
+   }
+  }
+ ]
+}
