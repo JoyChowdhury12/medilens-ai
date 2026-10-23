@@ -8,6 +8,7 @@ import re
 from typing import Optional
 
 from .dictionary import get_test, match_test
+from .range_engine import standard_range
 
 NUM = r"\d+(?:[.,]\d+)*"
 
@@ -122,6 +123,13 @@ def parse_line(text: str, ocr_conf: float = 1.0) -> Optional[dict]:
         unit = test["unit"]
 
     confidence = round(min(ocr_conf, name_score / 100), 2)
+    # Direction check: e.g. HDL is only ever "at least X". A printed "< 40" is a misread ">" -> do not trust it.
+    std_low, std_high = standard_range(test, None)
+    range_conflict = ((low is None and high is not None and std_high is None and std_low is not None) or
+                      (high is None and low is not None and std_low is None and std_high is not None))
+    if range_conflict:
+        low = high = None
+        confidence = min(confidence, 0.5)
     # Plausibility check: a value far outside the printed range is often an OCR slip
     # (for example a lost decimal point: "1.3" read as "13"). Ask the user to check it.
     implausible = (high is not None and value > high * 3) or (low and value < low / 3)
@@ -137,6 +145,7 @@ def parse_line(text: str, ocr_conf: float = 1.0) -> Optional[dict]:
         "printed_high": round(high, 2) if high is not None else None,
         "confidence": confidence,
         "needs_check": confidence < 0.80 or unit_assumed,
+        "range_conflict": range_conflict,
         "source_line": text,
     }
 

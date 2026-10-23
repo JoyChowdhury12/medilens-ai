@@ -112,3 +112,23 @@ def test_interpret_full_report():
     assert out["next_step"]["specialist"] == "Endocrinologist"
     assert out["next_step"]["urgency"] == "soon"
     assert out["results"][-1]["code"] == "tsh"  # flagged results come first
+
+
+# --- regression: a real Ibn Sina lipid report (photo, noisy OCR) ---
+def test_damaged_triglyceride_name_is_matched():
+    from medilens.dictionary import match_test
+    assert match_test("S Tnglycende")[0] == "triglycerides"
+
+
+def test_non_hdl_and_ratio_rows():
+    from medilens.dictionary import match_test
+    assert match_test("Non-HDL-Choiestero!")[0] == "non_hdl"
+    assert match_test("T Cholestero-HDL Rabo")[0] is None          # calculated ratio: not judged
+
+
+def test_misread_range_direction_is_not_trusted():
+    from medilens.pipeline import extract_from_text
+    bad = extract_from_text("S HDL Cholesterol 47 mg/dL <40")["tests"][0]     # HDL is only ever "at least X"
+    assert bad["printed_low"] is None and bad["printed_high"] is None and bad["needs_check"]
+    good = extract_from_text("S HDL Cholesterol 47 mg/dL >40")["tests"][0]
+    assert good["printed_low"] == 40 and good["printed_high"] is None

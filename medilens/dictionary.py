@@ -12,6 +12,8 @@ from rapidfuzz import fuzz, process
 
 DATA_FILE = Path(__file__).parent / "data" / "tests.json"
 MATCH_THRESHOLD = 86  # 0-100; below this we treat the name as "unknown test"
+FALLBACK_THRESHOLD = 74  # damaged-by-OCR names: allowed only when one test is clearly the closest ...
+FALLBACK_MARGIN = 12     # ... by this many points over the best different test (the user is asked to check it)
 
 
 def clean_name(text: str) -> str:
@@ -62,12 +64,24 @@ def _match_one(raw_name: str):
     table = _alias_table()
     if cleaned in table:  # exact alias match
         return table[cleaned], 100
+    if _is_ratio(cleaned):   # "Total Cholesterol / HDL ratio" is a calculated value, not a test we judge
+        return None, 0
     best = process.extractOne(cleaned, table.keys(), scorer=fuzz.ratio)
     if best and _confusable(cleaned, best[0]):
         return None, round(best[1])
     if best and best[1] >= MATCH_THRESHOLD:
         return table[best[0]], round(best[1])
+    if best and best[1] >= FALLBACK_THRESHOLD and len(cleaned) >= 8:
+        # OCR-damaged name ("Tnglycende" for "Triglyceride"): accept only if ONE test is clearly the closest.
+        scored = process.extract(cleaned, table.keys(), scorer=fuzz.ratio, limit=6)
+        others = [sc for alias, sc, _ in scored if table[alias] != table[best[0]]]
+        if not others or best[1] - max(others) >= FALLBACK_MARGIN:
+            return table[best[0]], round(best[1])
     return None, round(best[1]) if best else 0
+
+
+def _is_ratio(cleaned: str) -> bool:
+    return any(fuzz.ratio(w, "ratio") >= 70 for w in cleaned.split())
 
 
 # Names that differ by one letter but mean different tests: never fuzzy-match one to the other.
