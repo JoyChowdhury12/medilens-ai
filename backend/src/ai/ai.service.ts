@@ -35,11 +35,11 @@ export class AiService {
     return this.call('/extract', { method: 'POST', body: form });
   }
 
-  interpret(tests: ConfirmedTest[], sex: string | null) {
+  interpret(tests: ConfirmedTest[], sex: string | null, age?: number | null) {
     return this.call('/interpret', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ sex, tests }),
+      body: JSON.stringify({ sex, age: age ?? null, tests }),
     });
   }
 }

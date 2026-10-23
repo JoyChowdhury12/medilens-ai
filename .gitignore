@@ -37,3 +37,11 @@ training/checkpoints/
 Thumbs.db
 .vscode/
 .idea/
+
+# fine-tuning outputs (large, regenerated)
+training/out/
+training/data/
+
+training/llama.cpp/
+training/venv-train/
+*.gguf

@@ -3,7 +3,7 @@
   extract_from_image()  photo -> cleaned image -> OCR -> test records   (user then confirms values)
   interpret()           confirmed records -> verified status -> Bangla explanations -> specialist
 """
-from . import consistency, local_model
+from . import consistency, guard, local_model
 from .dictionary import get_test, match_test
 from .explain_bn import DISCLAIMER_BN, explain_one, is_safe, summary
 from .extract_rules import extract, parse_line
@@ -80,7 +80,7 @@ def extract_from_text(text: str) -> dict:
     return {"quality": None, "extractor": "rules", "tests": extract(lines), "ocr_text": text}
 
 
-def interpret(tests: list, sex: str = None) -> dict:
+def interpret(tests: list, sex: str = None, age: int = None) -> dict:
     """tests: confirmed records, each with code (or raw name), value, printed_low, printed_high."""
     verdicts, unknown = [], []
     for t in tests:
@@ -96,14 +96,25 @@ def interpret(tests: list, sex: str = None) -> dict:
             continue
         verdicts.append(classify(code, float(t["value"]), sex, t.get("printed_low"), t.get("printed_high")))
 
+    abnormal = [v for v in verdicts if v.status != "normal"]
     results = []
     for v in verdicts:
         test = get_test(v.code)
         text_bn, source = explain_one(v), "template"
         if v.status != "normal" and local_model.enabled():
-            generated = local_model.explain_with_model(test["name"], v.value, test["unit"], v.status, v.direction, v.reason)
-            if generated and is_safe(generated):
-                text_bn, source = generated, "fine-tuned model"
+            related = [(get_test(o.code)["name"], f"{o.status}/{o.direction}", o.value, get_test(o.code)["unit"])
+                       for o in abnormal if o.code != v.code]
+            prompt = local_model.build_explain_prompt(test["name"], test["bn"], v.value, test["unit"], v.status, v.direction,
+                                                      v.low, v.high, sex, age, related)
+            generated = local_model.explain_with_model(test["name"], v.value, test["unit"], v.status, v.direction, v.reason,
+                                                       prompt=prompt)
+            if generated:
+                allowed = [x for x in (v.low, v.high, age) if x is not None] + [o.value for o in abnormal]
+                for o in abnormal:
+                    allowed += [x for x in (o.low, o.high) if x is not None]
+                if not guard.check_explanation(generated, value=v.value, status=v.status, direction=v.direction,
+                                               allowed_numbers=allowed):
+                    text_bn, source = generated, "fine-tuned model"
         results.append({**v.to_dict(), "name": test["name"], "name_bn": test["bn"], "unit": test["unit"],
                         "explanation_bn": text_bn, "explanation_source": source})
 

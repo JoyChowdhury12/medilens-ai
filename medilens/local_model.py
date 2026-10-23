@@ -10,6 +10,7 @@ The model is only ever called on localhost; report data never leaves your server
 """
 import json
 import os
+import re
 import urllib.request
 from typing import Optional
 
@@ -34,6 +35,46 @@ EXPLAIN_PROMPT = """নিচের যাচাই করা ল্যাব �
 """
 
 
+# Used by the fine-tuned model. The training data uses EXACTLY this prompt (training/make_dataset.py).
+EXPLAIN_PROMPT_V2 = """তুমি MediLens-এর সহায়ক। নিচের যাচাই করা ল্যাব ফলাফলটি সাধারণ মানুষের জন্য সহজ বাংলায় ২-৪ বাক্যে ব্যাখ্যা করো।
+নিয়ম: অবস্থা (বেশি/কম) ও সংখ্যা বদলাবে না; কোনো ওষুধ বা ডোজের নাম বলবে না; রোগ নির্ণয় করবে না; সতর্ক ভাষা ("হতে পারে") ব্যবহার করবে; শেষে ডাক্তারের পরামর্শের কথা বলবে।
+
+পরীক্ষা: {name} ({name_bn})
+মান: {value} {unit}
+অবস্থা: {status_bn} ({status})
+স্বাভাবিক সীমা: {range}
+রোগীর লিঙ্গ ও বয়স: {who}
+রিপোর্টের অন্যান্য অস্বাভাবিক মান: {related}
+"""
+
+_STATUS_BN = {"high": "স্বাভাবিকের চেয়ে বেশি", "low": "স্বাভাবিকের চেয়ে কম",
+              "borderline": "সীমার সামান্য বাইরে (বর্ডারলাইন)", "critical": "বিপজ্জনক মাত্রা"}
+_SEX_BN = {"male": "পুরুষ", "female": "নারী"}
+
+
+def _num(x) -> str:
+    return f"{x:.2f}".rstrip("0").rstrip(".") if isinstance(x, float) else str(x)
+
+
+def build_explain_prompt(name, name_bn, value, unit, status, direction, low, high, sex=None, age=None, related=None) -> str:
+    """related: list of (name, status, value, unit) for the OTHER abnormal values in the same report."""
+    if low is not None and high is not None:
+        rng = f"{_num(low)} - {_num(high)} {unit}"
+    elif high is not None:
+        rng = f"{_num(high)} {unit}-এর নিচে"
+    elif low is not None:
+        rng = f"{_num(low)} {unit}-এর উপরে"
+    else:
+        rng = "জানা নেই"
+    who = ", ".join(x for x in (_SEX_BN.get(sex), f"{age} বছর" if age else None) if x) or "জানা নেই"
+    status_bn = _STATUS_BN.get(status, status)
+    if status in ("borderline", "critical") and direction:
+        status_bn += " - " + ("বেশি" if direction == "high" else "কম")
+    rel = "; ".join(f"{n}: {s_} ({_num(v)} {u})" for n, s_, v, u in (related or [])) or "নেই"
+    return EXPLAIN_PROMPT_V2.format(name=name, name_bn=name_bn, value=_num(value), unit=unit, status_bn=status_bn,
+                                    status=f"{status}/{direction}" if direction else status, range=rng, who=who, related=rel)
+
+
 def enabled() -> bool:
     return MODEL_URL.startswith(("http://localhost", "http://127.0.0.1"))
 
@@ -42,7 +83,7 @@ def _generate(prompt: str, timeout: int = 60) -> Optional[str]:
     if not enabled():
         return None
     body = json.dumps({"model": MODEL_NAME, "prompt": prompt, "stream": False,
-                       "options": {"temperature": 0.1}}).encode()
+                       "think": False, "options": {"temperature": 0.1}}).encode()
     req = urllib.request.Request(f"{MODEL_URL}/api/generate", data=body,
                                  headers={"Content-Type": "application/json"})
     try:
@@ -64,7 +105,11 @@ def extract_with_model(ocr_text: str) -> Optional[list]:
         return None
 
 
-def explain_with_model(name, value, unit, status, direction, reason) -> Optional[str]:
-    out = _generate(EXPLAIN_PROMPT.format(name=name, value=value, unit=unit, status=status,
-                                          direction=direction or "-", reason=reason))
-    return out.strip() if out else None
+def explain_with_model(name, value, unit, status, direction, reason, *, prompt: Optional[str] = None) -> Optional[str]:
+    """prompt: built with build_explain_prompt (the fine-tuned model). Without it the old prompt is used."""
+    out = _generate(prompt or EXPLAIN_PROMPT.format(name=name, value=value, unit=unit, status=status,
+                                                    direction=direction or "-", reason=reason))
+    if not out:
+        return None
+    out = re.sub(r"<think>.*?</think>", "", out, flags=re.S).strip()   # some models print their reasoning
+    return out or None

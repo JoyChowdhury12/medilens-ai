@@ -70,6 +70,7 @@ export class ReportsService {
     const out = await this.ai.interpret(
       dto.tests.map((t) => ({ code: t.code, value: t.value, printed_low: t.printedLow ?? null, printed_high: t.printedHigh ?? null })),
       profile.sex,
+      profile.birthDate ? Math.floor((Date.now() - new Date(profile.birthDate).getTime()) / (365.25 * 86400_000)) : null,
     );
     if (!out.results?.length) throw new BadRequestException('None of these tests are supported yet.');
 

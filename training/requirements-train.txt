@@ -1,0 +1,9 @@
+# Install PyTorch FIRST for RTX 50-series (Blackwell) cards:
+#   pip install torch --index-url https://download.pytorch.org/whl/cu128
+transformers>=4.51
+peft>=0.14
+bitsandbytes>=0.45
+accelerate>=1.0
+datasets>=3.0
+sentencepiece
+safetensors

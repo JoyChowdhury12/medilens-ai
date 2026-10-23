@@ -34,6 +34,7 @@ class ConfirmedTest(BaseModel):
 
 class InterpretIn(BaseModel):
     sex: Optional[Literal["male", "female"]] = None
+    age: Optional[int] = None
     tests: List[ConfirmedTest]
 
 
@@ -67,4 +68,4 @@ def extract_text(body: TextIn):
 @app.post("/interpret")
 def interpret_tests(body: InterpretIn):
     """Step 2: send the CONFIRMED values. Returns status, reasons, Bangla explanations and next step."""
-    return interpret([t.model_dump() for t in body.tests], body.sex)
+    return interpret([t.model_dump() for t in body.tests], body.sex, body.age)
