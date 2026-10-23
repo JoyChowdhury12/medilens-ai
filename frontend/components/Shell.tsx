@@ -26,6 +26,22 @@ export function LangToggle({ className = '' }: { className?: string }) {
   );
 }
 
+/** Both languages side by side; the chosen one is highlighted. Used on the login and register pages. */
+export function LangSwitch({ className = '' }: { className?: string }) {
+  const { lang, setLang } = useT();
+  return (
+    <div role="radiogroup" aria-label="Language / ভাষা" className={`inline-flex items-center gap-1 rounded-full border border-line bg-white p-1 shadow-sm ${className}`}>
+      <Icon name="globe" size={18} className="ml-2 mr-1 text-muted" />
+      {([['bn', 'বাংলা'], ['en', 'English']] as const).map(([code, label]) => (
+        <button key={code} type="button" role="radio" aria-checked={lang === code} onClick={() => setLang(code)}
+          className={`min-h-[36px] rounded-full px-4 text-[15px] font-medium transition-colors ${lang === code ? 'bg-brand text-white shadow' : 'text-muted hover:bg-wash hover:text-ink'}`}>
+          {label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 export function Disclaimer() {
   const { t } = useT();
   return <p className="no-print mt-10 border-t border-line pt-4 text-sm text-muted">{t('disclaimer')}</p>;

@@ -5,7 +5,7 @@ const config: Config = {
   theme: {
     extend: {
       boxShadow: { panel: '0 1px 2px rgba(22,32,43,0.05)' },
-      fontFamily: { sans: ['"Hind Siliguri"', '"Nirmala UI"', 'system-ui', 'sans-serif'] },
+      fontFamily: { sans: ['Inter', '"Noto Sans Bengali"', '"Nirmala UI"', 'system-ui', 'sans-serif'] },
       colors: {
         ink: '#1b2430',
         muted: '#5b6673',

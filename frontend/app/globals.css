@@ -1,6 +1,12 @@
-@import '@fontsource/hind-siliguri/400.css';
-@import '@fontsource/hind-siliguri/500.css';
-@import '@fontsource/hind-siliguri/600.css';
+/* Bangla: Noto Sans Bengali (clear digits such as ১). English: Inter. Each script uses its own font automatically. */
+@import '@fontsource/inter/400.css';
+@import '@fontsource/inter/500.css';
+@import '@fontsource/inter/600.css';
+@import '@fontsource/inter/700.css';
+@import '@fontsource/noto-sans-bengali/400.css';
+@import '@fontsource/noto-sans-bengali/500.css';
+@import '@fontsource/noto-sans-bengali/600.css';
+@import '@fontsource/noto-sans-bengali/700.css';
 @tailwind base;
 @tailwind components;
 @tailwind utilities;

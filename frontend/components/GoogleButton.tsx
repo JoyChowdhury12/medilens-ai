@@ -27,7 +27,7 @@ export default function GoogleButton({ onError }: { onError: (m: string) => void
       });
       box.current.innerHTML = '';
       window.google.accounts.id.renderButton(box.current, {
-        theme: 'outline', size: 'large', shape: 'pill', text: 'continue_with', width: Math.min(box.current.clientWidth || 360, 400),
+        theme: 'outline', size: 'large', shape: 'rectangular', text: 'continue_with', width: Math.min(box.current.clientWidth || 360, 400), logo_alignment: 'center',
         locale: lang === 'bn' ? 'bn' : 'en',
       });
     };

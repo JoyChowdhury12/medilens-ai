@@ -45,3 +45,6 @@ training/data/
 training/llama.cpp/
 training/venv-train/
 *.gguf
+
+.run-logs/
+.pytest_cache/
