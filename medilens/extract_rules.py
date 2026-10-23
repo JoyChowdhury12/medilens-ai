@@ -19,6 +19,9 @@ UNIT_PATTERNS = [
     (r"mg\s*/\s*l", "mg/L"), (r"µmol\s*/\s*l|umol\s*/\s*l", "umol/L"),
     (r"x\s*10\s*\^?\s*9\s*/\s*l|10\^9/l|x10e9/l", "x10^9/L"), (r"x\s*10\s*\^?\s*12\s*/\s*l", "x10^12/L"),
     (r"mill(?:ion)?s?\s*/\s*c(?:u)?mm|mill(?:ion)?s?\s*/\s*(?:µl|ul|mcl)", "x10^12/L"),
+    # "K/uL" = thousands per microlitre = x10^9/L ; "M/uL" = millions per microlitre = x10^12/L (checked BEFORE "/ul")
+    (r"\bk\s*/\s*(?:µl|ul|mcl)|x?\s*10\s*\^?\s*3\s*/\s*(?:µl|ul|mcl)|thou\w*\s*/\s*(?:µl|ul|mcl|cumm)", "x10^9/L"),
+    (r"\bm\s*/\s*(?:µl|ul|mcl)", "x10^12/L"),
     (r"/\s*cumm|/\s*cmm|/\s*µl|/\s*ul|/\s*mcl|/\s*mm3|\bcumm\b|\bcmm\b", "/cumm"),
     (r"\bfl\b", "fL"), (r"\bpg\b", "pg"), (r"mm\s*/\s*1st\s*h(?:ou)?r|mm/hr", "mm/1st hr"), (r"%", "%"),
 ]
@@ -49,6 +52,13 @@ def find_unit(text: str) -> Optional[str]:
         if re.search(pattern, low):
             return unit
     return None
+
+
+def unit_position(text: str) -> Optional[int]:
+    """Where the first unit starts in the text (None if no unit)."""
+    low = text.lower()
+    spots = [m.start() for pattern, _ in UNIT_PATTERNS for m in [re.search(pattern, low)] if m]
+    return min(spots) if spots else None
 
 
 def find_range(text: str):
@@ -83,8 +93,36 @@ def split_name(tokens: list):
 def fix_ocr_digits(text: str) -> str:
     """Repair common OCR slips inside numbers: '©.40' -> '0.40', '3:5' -> '3.5', 'O.9' -> '0.9'."""
     text = re.sub(r"(?<![A-Za-z])[Oo©@](?=[.,]\d)", "0", text)
+    text = re.sub(r"(?<![A-Za-z0-9])[!|](?=\d)", "1", text)       # "!1.60" -> "11.60" 
     text = re.sub(r"(\d):(\d)", r"\1.\2", text)
     return text
+
+
+DIFFERENTIAL = ("neutrophils", "lymphocytes", "monocytes", "eosinophils", "basophils")
+
+
+def repair_range(test: dict, low, high):
+    """OCR often damages the printed range ("27 00" -> 2700, "36.00" -> 3600). Repair a bound that is 10x or 100x
+    too large when the smaller number matches our standard table; drop a printed range that makes no sense.
+    Returns (low, high, was_changed)."""
+    std = [b for pair in test["range"].values() for b in pair if b]
+    changed = False
+
+    def fix(b):
+        nonlocal changed
+        if b is None or not std:
+            return b
+        if any(abs(b - s) <= 0.5 * s for s in std):
+            return b
+        for div in (10, 100, 1000):
+            if any(abs(b / div - s) <= 0.15 * s for s in std):
+                changed = True
+                return round(b / div, 2)
+        return b
+    low, high = fix(low), fix(high)
+    if low is not None and high is not None and low >= high:   # still impossible: use the standard range instead
+        return None, None, True
+    return low, high, changed
 
 
 def parse_line(text: str, ocr_conf: float = 1.0) -> Optional[dict]:
@@ -96,7 +134,20 @@ def parse_line(text: str, ocr_conf: float = 1.0) -> Optional[dict]:
     if not code:
         return None
     rest = " ".join(tokens[k:])
-    value_match = re.search(NUM, rest)
+    # The value comes BEFORE the printed range ("33.00 20.00-45.00 0%": the trailing "0%" is noise).
+    range_start = re.search(rf"{NUM}\s*(?:-|–|to)\s*{NUM}|[<>]\s*=?\s*{NUM}|up\s*to|less than|more than|greater than", rest, re.I)
+    if range_start and not re.search(NUM, rest[:range_start.start()]):
+        return None          # only a reference range on this line ("PCV 4.50-5.50"): the result is somewhere else
+    head = rest[:range_start.start()] if range_start else rest
+    value_match = re.search(NUM, head)
+    if value_match:
+        # Stray digits can sit between a damaged name and the result ("riaemoglopin 4 12.70 g/dL"):
+        # the value is the number right before the unit.
+        pos = unit_position(head)
+        if pos is not None:
+            before = [m for m in re.finditer(NUM, head) if m.end() <= pos]
+            if before:
+                value_match = before[-1]
     if not value_match:
         return None
     value = to_float(value_match.group(0))
@@ -122,7 +173,18 @@ def parse_line(text: str, ocr_conf: float = 1.0) -> Optional[dict]:
         high = high * factor if high is not None else None
         unit = test["unit"]
 
+    # The standard table holds differential counts as PERCENT. Rows in absolute counts (K/uL) are skipped,
+    # the percent rows of the same report are used instead.
+    if code in DIFFERENTIAL:
+        absolute = unit in ("x10^9/L", "/cumm") or (
+            unit_assumed and code in ("neutrophils", "lymphocytes") and high is not None and high <= 10)
+        if absolute:
+            return None
+    low, high, repaired = repair_range(test, low, high)
+
     confidence = round(min(ocr_conf, name_score / 100), 2)
+    if repaired:
+        confidence = min(confidence, 0.7)
     # Direction check: e.g. HDL is only ever "at least X". A printed "< 40" is a misread ">" -> do not trust it.
     std_low, std_high = standard_range(test, None)
     range_conflict = ((low is None and high is not None and std_high is None and std_low is not None) or
@@ -144,8 +206,9 @@ def parse_line(text: str, ocr_conf: float = 1.0) -> Optional[dict]:
         "printed_low": round(low, 2) if low is not None else None,
         "printed_high": round(high, 2) if high is not None else None,
         "confidence": confidence,
-        "needs_check": confidence < 0.80 or unit_assumed,
+        "needs_check": confidence < 0.70 or (unit_assumed and low is None and high is None),
         "range_conflict": range_conflict,
+        "unit_assumed": unit_assumed,
         "source_line": text,
     }
 
@@ -159,3 +222,53 @@ def extract(lines: list) -> list:
             seen.add(rec["code"])
             records.append(rec)
     return records
+
+
+def merge_records(*record_lists) -> list:
+    """Combine several reads of the same photo into one record per test by VOTING on the value.
+    - the value most reads agree on wins (ties: the more confident read);
+    - if the winner breaks a known relation between red-cell values (MCHC = Hb/Hct x 100, MCV = Hct/RBC x 10,
+      MCH = Hb/RBC x 10) and another read fits the relation, that read is used;
+    - a test whose reads disagree stays "needs check"; one that two or more reads agree on loses that flag."""
+    from collections import defaultdict
+    groups = defaultdict(list)
+    for records in record_lists:
+        for r in records:
+            groups[r["code"]].append(r)
+    merged, candidates = {}, {}
+    for code, recs in groups.items():
+        votes = defaultdict(list)
+        for r in recs:
+            votes[round(r["value"], 2)].append(r)
+        candidates[code] = votes
+        weight = lambda g: sum(x.get("_w", 1.0) for x in g)
+        ranked = sorted(votes.values(), key=lambda g: (weight(g), max(x["confidence"] for x in g)), reverse=True)
+        winner = dict(max(ranked[0], key=lambda x: (x.get("_w", 1.0), x["confidence"])))   # deep-learning read first
+        if winner.get("printed_low") is None and winner.get("printed_high") is None:      # take a range another read found
+            for other in ranked[0]:
+                if other.get("printed_low") is not None or other.get("printed_high") is not None:
+                    winner["printed_low"], winner["printed_high"] = other.get("printed_low"), other.get("printed_high")
+                    break
+        if len(ranked) > 1 and weight(ranked[0]) <= weight(ranked[1]):
+            winner["needs_check"] = True                      # tie between different readings
+        elif len(ranked[0]) >= 2:
+            winner["confidence"] = round(min(1.0, winner["confidence"] + 0.1), 2)
+            if len(ranked) == 1 and not winner.get("unit_assumed") and not winner.get("range_conflict"):
+                winner["needs_check"] = False                 # several reads agree
+        merged[code] = winner
+
+    def val(c):
+        return merged[c]["value"] if c in merged else None
+    hb, hct, rbc = val("hemoglobin"), val("hematocrit"), val("rbc")
+    for code, expected in (("mchc", hb / hct * 100 if hb and hct else None),
+                           ("mcv", hct / rbc * 10 if hct and rbc else None),
+                           ("mch", hb / rbc * 10 if hb and rbc else None)):
+        if expected is None or code not in merged:
+            continue
+        if abs(merged[code]["value"] - expected) / expected > 0.08:
+            fits = [v for v in candidates[code] if abs(v - expected) / expected <= 0.04]
+            if fits:
+                chosen = dict(max(candidates[code][fits[0]], key=lambda x: x["confidence"]))
+                chosen["needs_check"] = True
+                merged[code] = chosen
+    return list(merged.values())

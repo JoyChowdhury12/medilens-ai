@@ -40,7 +40,11 @@ class InterpretIn(BaseModel):
 
 @app.get("/health")
 def health():
-    return {"status": "ok", "fine_tuned_model": "on" if local_model.enabled() else "off (using rules and templates)"}
+    from medilens import ocr
+    ocr.rapid_available()
+    return {"status": "ok", "fine_tuned_model": "on" if local_model.enabled() else "off (using rules and templates)",
+            "ocr": {"deep_learning_reader_installed": ocr.STATUS["rapid_installed"], "problem": ocr.STATUS["rapid_error"],
+                    "last_photo_read_with": ocr.STATUS["last_engine"]}}
 
 
 @app.post("/extract")

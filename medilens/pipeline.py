@@ -6,8 +6,8 @@
 from . import consistency, guard, local_model
 from .dictionary import get_test, match_test
 from .explain_bn import DISCLAIMER_BN, explain_one, is_safe, summary
-from .extract_rules import extract, parse_line
-from .ocr import OcrLine, ocr_image_bytes
+from .extract_rules import extract, merge_records, parse_line
+from .ocr import OcrLine, ocr_image_bytes, ocr_image_passes
 from .range_engine import classify
 from .specialist import suggest
 
@@ -36,8 +36,27 @@ def _records_from_model(items, lines):
     return records
 
 
+def _read_photo(image_bytes: bytes):
+    """Read a photo several ways and vote. A clean page (high confidence, many tests) stops after the first read."""
+    quality, passes = ocr_image_passes(image_bytes)
+    _, lines = next(passes)
+    reads = [extract(lines)]
+    for _, more in passes:
+        records = reads[0] if len(reads) == 1 else merge_records(*reads)
+        mean_conf = sum(r["confidence"] for r in records) / len(records) if records else 0
+        if len(reads) == 1 and len(records) >= 14 and mean_conf >= 0.9:
+            break                                            # clean scan: no need to read again
+        lines = lines + more
+        reads.append(extract(more))
+        if len(reads) == 3:                                  # three reads are enough to vote; the 4th only rescues
+            merged = merge_records(*reads)                   # when the result is still thin
+            if len(merged) >= 12:
+                break
+    return quality, lines, merge_records(*reads)
+
+
 def extract_from_image(image_bytes: bytes) -> dict:
-    quality, lines = ocr_image_bytes(image_bytes)
+    quality, lines, records_rules = _read_photo(image_bytes)
     ocr_text = "\n".join(l.text for l in lines)
     records, extractor = None, "rules"
     if local_model.enabled():
@@ -45,7 +64,7 @@ def extract_from_image(image_bytes: bytes) -> dict:
         if items:
             records, extractor = _records_from_model(items, lines), "fine-tuned model"
     if not records:
-        records = extract(lines)
+        records = records_rules
     message = None if records else _NO_TESTS_MSG
     return {"quality": quality, "extractor": extractor, "tests": records, "message": message, "ocr_text": ocr_text}
 
@@ -62,14 +81,15 @@ def extract_from_pdf(pdf_bytes: bytes) -> dict:
         out = extract_from_text(text)
         out["message"] = None if out["tests"] else _NO_TESTS_MSG
         return out
-    all_lines, quality = [], None
+    all_lines, quality, page_records = [], None, []
     for i in range(len(pdf)):
         buf = io.BytesIO()
         pdf[i].render(scale=3).to_pil().convert("RGB").save(buf, format="PNG")
-        q, lines = ocr_image_bytes(buf.getvalue())
+        q, lines, recs = _read_photo(buf.getvalue())
         quality = quality or q
         all_lines += lines
-    records = extract(all_lines)
+        page_records.append(recs)
+    records = merge_records(*page_records)
     return {"quality": quality, "extractor": "rules", "tests": records,
             "message": None if records else _NO_TESTS_MSG, "ocr_text": "\n".join(l.text for l in all_lines)}
 

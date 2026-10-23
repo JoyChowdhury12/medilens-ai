@@ -132,3 +132,62 @@ def test_misread_range_direction_is_not_trusted():
     assert bad["printed_low"] is None and bad["printed_high"] is None and bad["needs_check"]
     good = extract_from_text("S HDL Cholesterol 47 mg/dL >40")["tests"][0]
     assert good["printed_low"] == 40 and good["printed_high"] is None
+
+
+# --- regression: Popular Diagnostic photo (K/uL units, damaged names and ranges) ---
+def test_k_per_ul_is_thousands_not_per_cumm():
+    from medilens.pipeline import extract_from_text
+    t = {x["code"]: x for x in extract_from_text(
+        "White Blood Cells 9.24 K/uL 4.00 - 10.00 K/uL\nPlatelets 226.00 K/uL 150.00 - 450.00 K/uL")["tests"]}
+    assert t["wbc"]["value"] == 9.24 and t["platelets"]["value"] == 226
+
+
+def test_value_is_the_number_before_the_unit():
+    from medilens.pipeline import extract_from_text
+    t = extract_from_text("Haemoglobin 4 12.70 g/dL 11.50-14.50 g/dl")["tests"][0]
+    assert t["code"] == "hemoglobin" and t["value"] == 12.7
+
+
+def test_absolute_differential_rows_are_skipped_percent_rows_used():
+    from medilens.pipeline import extract_from_text
+    t = extract_from_text("Neutrophil 5.45 K/uL 2.16 - 6.04 K/uL\nNeutrophil% 59.00 % 40.00 - 70.00 %")["tests"]
+    assert len(t) == 1 and t[0]["value"] == 59 and t[0]["unit"] == "%"
+
+
+def test_damaged_printed_range_is_repaired():
+    from medilens.pipeline import extract_from_text
+    t = extract_from_text("MCH 25.02 pg 2700 - 32.00 pg")["tests"][0]
+    assert t["printed_low"] == 27 and t["printed_high"] == 32
+
+
+def test_voting_between_reads_uses_the_relation_between_values():
+    from medilens.extract_rules import merge_records
+
+    def rec(code, value, conf=0.6):
+        return {"code": code, "value": value, "confidence": conf, "needs_check": True, "unit_assumed": False}
+    base = [rec("hemoglobin", 12.7), rec("hematocrit", 40.8)]
+    out = {r["code"]: r for r in merge_records(base + [rec("mchc", 34.1)], base + [rec("mchc", 31.1)], base + [rec("mchc", 34.1)])}
+    assert out["mchc"]["value"] == 31.1            # 12.7 / 40.8 x 100 = 31.1, so the odd one out is right
+
+
+def test_line_with_only_a_range_gives_no_value():
+    from medilens.pipeline import extract_from_text
+    assert extract_from_text("PCV 4.50-5.50")["tests"] == []                       # the result is on another line
+    assert extract_from_text("Lymphocyte% 33.00 20.00-45.00 0%")["tests"][0]["value"] == 33
+
+
+def test_range_line_is_glued_to_its_row_but_a_new_result_is_not():
+    from medilens.ocr import OcrLine, _join_range_lines
+    out = _join_range_lines([OcrLine("TSH 0.68", .9), OcrLine("mIU/L 0.40 - 4.00", .9), OcrLine("HbA1c 4.5 %", .9),
+                             OcrLine("6.4 mmol/L 3.9 to 7.8", .9)])
+    assert [l.text for l in out] == ["TSH 0.68 mIU/L 0.40 - 4.00", "HbA1c 4.5 %", "6.4 mmol/L 3.9 to 7.8"]
+
+
+def test_merge_keeps_the_range_and_the_cleaner_line_from_the_better_read():
+    from medilens.extract_rules import merge_records
+    tess = {"code": "lymphocytes", "value": 33.0, "confidence": 0.9, "needs_check": False, "printed_low": None,
+            "printed_high": None, "source_line": "Lymphocyte% 33.00 % es", "_w": 1.0}
+    rapid = {"code": "lymphocytes", "value": 33.0, "confidence": 0.7, "needs_check": False, "printed_low": 20.0,
+             "printed_high": 45.0, "source_line": "Lymphocyte% 33.00 20.00-45.00", "_w": 1.5}
+    out = merge_records([tess], [rapid])[0]
+    assert (out["printed_low"], out["printed_high"]) == (20.0, 45.0) and out["source_line"].endswith("20.00-45.00")

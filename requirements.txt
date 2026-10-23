@@ -5,6 +5,7 @@ opencv-python-headless>=4.9
 numpy>=1.26
 pillow>=10.0
 pytesseract>=0.3.10
+rapidocr-onnxruntime>=1.3   # deep-learning OCR (open-source PaddleOCR models, runs locally); Tesseract is the fallback
 rapidfuzz>=3.6
 pytest>=8.0
 httpx>=0.27

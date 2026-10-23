@@ -391,7 +391,12 @@
         "2 hours after breakfast",
         "pp blood sugar",
         "ppbs",
-        "2hpp"
+        "2hpp",
+        "postprandial blood glucose",
+        "post prandial blood glucose",
+        "postprandial blood sugar",
+        "post prandial blood sugar",
+        "blood glucose 2 hours after meal"
       ],
       "range": {
         "any": [
