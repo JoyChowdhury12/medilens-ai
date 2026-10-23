@@ -29,6 +29,28 @@
   .skeleton { @apply animate-pulse rounded bg-line/70; }
 }
 
+@keyframes stripes { to { background-position: 28px 0; } }
+/* loading animations (LoadingPanel) */
+@keyframes scan { 0% { top: -12px; } 100% { top: 64px; } }
+.scan-line { background: linear-gradient(to bottom, transparent, rgba(13,110,110,.35), transparent); animation: scan 1.6s ease-in-out infinite alternate; }
+@keyframes write { 0% { transform: scaleX(0); } 60%, 100% { transform: scaleX(1); } }
+.write-line { transform-origin: left; animation: write 2.2s ease-out infinite; }
+@keyframes dots { 0%, 20% { opacity: 0; } 50% { opacity: 1; } 100% { opacity: 0; } }
+.loading-dots span { animation: dots 1.4s infinite; }
+.loading-dots span:nth-child(2) { animation-delay: .2s; }
+.loading-dots span:nth-child(3) { animation-delay: .4s; }
+@keyframes popIn { 0% { transform: scale(.4); opacity: 0; } 80% { transform: scale(1.12); } 100% { transform: scale(1); opacity: 1; } }
+.pop-in { animation: popIn .35s ease-out; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+.fade-in { animation: fadeIn .4s ease-out; }
+@media (prefers-reduced-motion: reduce) {
+  .scan-line, .write-line, .loading-dots span, .pop-in, .fade-in, .progress-fill, .animate-spin, .animate-ping { animation: none !important; }
+}
+.progress-fill {
+  background-image: linear-gradient(45deg, rgba(255,255,255,.28) 25%, transparent 25%, transparent 50%, rgba(255,255,255,.28) 50%, rgba(255,255,255,.28) 75%, transparent 75%);
+  background-size: 28px 28px; animation: stripes 1s linear infinite;
+}
+
 @media print {
   nav, aside, header, .no-print { display: none !important; }
   body { background: #fff; font-size: 12pt; }

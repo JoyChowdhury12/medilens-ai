@@ -15,7 +15,7 @@ export interface DraftTest {
 export interface Report {
   id: string; profileId: string; status: 'DRAFT' | 'CONFIRMED'; labName: string | null; reportDate: string | null;
   quality: { problems: string[] } | null;
-  draft: { tests: DraftTest[]; message: string | null } | null;
+  draft: { tests: DraftTest[]; message: string | null; meta?: { report_date: string | null; lab_name: string | null } | null } | null;
   nextStep: { urgency: string; urgency_text_bn: string; specialist: string | null; specialist_bn: string | null } | null;
   summaryBn: string | null; warnings: { codes: string[]; text: string; text_bn: string }[] | null; disclaimerBn: string; results: Result[]; createdAt: string;
 }

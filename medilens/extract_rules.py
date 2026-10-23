@@ -187,14 +187,17 @@ def parse_line(text: str, ocr_conf: float = 1.0) -> Optional[dict]:
         confidence = min(confidence, 0.7)
     # Direction check: e.g. HDL is only ever "at least X". A printed "< 40" is a misread ">" -> do not trust it.
     std_low, std_high = standard_range(test, None)
-    range_conflict = ((low is None and high is not None and std_high is None and std_low is not None) or
-                      (high is None and low is not None and std_low is None and std_high is not None))
+    std_low = std_low or None            # a lower limit of 0 means "no lower limit" (LDL, cholesterol ...)
+    # (a standard lower limit of 0 means "no lower limit": LDL "< 130" printed as "> 100" is a misread sign)
+    range_conflict = ((low is None and high is not None and std_high is None and bool(std_low)) or
+                      (high is None and low is not None and not std_low and std_high is not None))
     if range_conflict:
         low = high = None
         confidence = min(confidence, 0.5)
     # Plausibility check: a value far outside the printed range is often an OCR slip
     # (for example a lost decimal point: "1.3" read as "13"). Ask the user to check it.
-    implausible = (high is not None and value > high * 3) or (low and value < low / 3)
+    ref_low, ref_high = (low, high) if (low is not None or high is not None) else (std_low, std_high)
+    implausible = (ref_high is not None and value > ref_high * 3) or (ref_low and value < ref_low / 3)
     if implausible:
         confidence = min(confidence, 0.5)
     return {
@@ -209,6 +212,7 @@ def parse_line(text: str, ocr_conf: float = 1.0) -> Optional[dict]:
         "needs_check": confidence < 0.70 or (unit_assumed and low is None and high is None),
         "range_conflict": range_conflict,
         "unit_assumed": unit_assumed,
+        "implausible": bool(implausible),
         "source_line": text,
     }
 
@@ -242,14 +246,17 @@ def merge_records(*record_lists) -> list:
             votes[round(r["value"], 2)].append(r)
         candidates[code] = votes
         weight = lambda g: sum(x.get("_w", 1.0) for x in g)
-        ranked = sorted(votes.values(), key=lambda g: (weight(g), max(x["confidence"] for x in g)), reverse=True)
+        # A value far outside its range in one read but normal-looking in another is usually an OCR slip
+        # (a pen mark read as a digit: "7296" for "296"), so plausible readings come first.
+        plausible = lambda g: not all(x.get("implausible") for x in g)
+        ranked = sorted(votes.values(), key=lambda g: (plausible(g), weight(g), max(x["confidence"] for x in g)), reverse=True)
         winner = dict(max(ranked[0], key=lambda x: (x.get("_w", 1.0), x["confidence"])))   # deep-learning read first
         if winner.get("printed_low") is None and winner.get("printed_high") is None:      # take a range another read found
             for other in ranked[0]:
                 if other.get("printed_low") is not None or other.get("printed_high") is not None:
                     winner["printed_low"], winner["printed_high"] = other.get("printed_low"), other.get("printed_high")
                     break
-        if len(ranked) > 1 and weight(ranked[0]) <= weight(ranked[1]):
+        if len(ranked) > 1 and (weight(ranked[0]) <= weight(ranked[1]) or not plausible(ranked[1])):
             winner["needs_check"] = True                      # tie between different readings
         elif len(ranked[0]) >= 2:
             winner["confidence"] = round(min(1.0, winner["confidence"] + 0.1), 2)
@@ -260,15 +267,17 @@ def merge_records(*record_lists) -> list:
     def val(c):
         return merged[c]["value"] if c in merged else None
     hb, hct, rbc = val("hemoglobin"), val("hematocrit"), val("rbc")
-    for code, expected in (("mchc", hb / hct * 100 if hb and hct else None),
-                           ("mcv", hct / rbc * 10 if hct and rbc else None),
-                           ("mch", hb / rbc * 10 if hb and rbc else None)):
+    chol, hdl = val("cholesterol"), val("hdl")
+    for code, expected, tol in (("mchc", hb / hct * 100 if hb and hct else None, 0.08),
+                                ("mcv", hct / rbc * 10 if hct and rbc else None, 0.08),
+                                ("mch", hb / rbc * 10 if hb and rbc else None, 0.08),
+                                ("non_hdl", chol - hdl if chol and hdl and chol > hdl else None, 0.06)):
         if expected is None or code not in merged:
             continue
-        if abs(merged[code]["value"] - expected) / expected > 0.08:
+        if abs(merged[code]["value"] - expected) / expected > tol:
             fits = [v for v in candidates[code] if abs(v - expected) / expected <= 0.04]
             if fits:
                 chosen = dict(max(candidates[code][fits[0]], key=lambda x: x["confidence"]))
-                chosen["needs_check"] = True
                 merged[code] = chosen
+            merged[code]["needs_check"] = True              # a value that does not fit its relatives: ask the person
     return list(merged.values())

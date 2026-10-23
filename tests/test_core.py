@@ -191,3 +191,62 @@ def test_merge_keeps_the_range_and_the_cleaner_line_from_the_better_read():
              "printed_high": 45.0, "source_line": "Lymphocyte% 33.00 20.00-45.00", "_w": 1.5}
     out = merge_records([tess], [rapid])[0]
     assert (out["printed_low"], out["printed_high"]) == (20.0, 45.0) and out["source_line"].endswith("20.00-45.00")
+
+
+# --- report date and lab name from the header ---
+def test_report_date_prefers_the_collection_date():
+    from medilens.meta import find_report_date
+    text = "BIOCHEMISTRY REPORT\nBill on :04/10/25, 07:41 AM Print. on : 05/10/25\nCollected on : 03/10/25, 07:45 AM"
+    assert find_report_date(text) == "2025-10-03"
+    assert find_report_date("Date Received:20/07/2013Date Delivered:20/07/2013") == "2013-07-20"
+    assert find_report_date("Sample collected 4 Oct 2025") == "2025-10-04"
+    assert find_report_date("Collected on 31/02/25") is None            # not a real date
+    assert find_report_date("Collected on 01/01/2099") is None          # in the future
+
+
+def test_lab_name_from_the_header():
+    from medilens.meta import find_lab_name
+    text = "POPULAR DIAGNOSTIC CENTRE LTD\nThanthania, Sherpur Road, Bogra.\nTel: 051-69500"
+    assert find_lab_name(text) == "Popular Diagnostic Centre Ltd"
+    assert find_lab_name("Name: Mrs Touhida\nPhone 0171") is None
+
+
+def test_flipped_sign_on_a_one_sided_test_is_not_trusted():
+    from medilens.pipeline import extract_from_text
+    ldl = extract_from_text("S. LDL Cholesterol 69 mg/dL > 100")["tests"][0]       # LDL limits are "under X"; ">" is a misread "<"
+    assert ldl["printed_low"] is None and ldl["printed_high"] is None and ldl["needs_check"]
+    ok = extract_from_text("S. LDL Cholesterol 69 mg/dL < 100")["tests"][0]
+    assert ok["printed_high"] == 100 and ok["printed_low"] is None
+
+
+def test_non_hdl_must_equal_total_minus_hdl():
+    from medilens.extract_rules import merge_records
+    from medilens import consistency
+
+    def rec(code, value, conf=0.8):
+        return {"code": code, "value": value, "confidence": conf, "needs_check": False, "printed_low": None, "printed_high": None}
+    base = [rec("cholesterol", 155), rec("hdl", 27)]
+    out = {r["code"]: r for r in merge_records(base + [rec("non_hdl", 428, .9)], base + [rec("non_hdl", 128, .7)])}
+    assert out["non_hdl"]["value"] == 128                                            # 155 - 27
+    only_wrong = {r["code"]: r for r in merge_records(base + [rec("non_hdl", 428)])}
+    assert only_wrong["non_hdl"]["needs_check"]
+    assert consistency.check({"cholesterol": 155, "hdl": 27, "non_hdl": 428})
+    assert not consistency.check({"cholesterol": 155, "hdl": 27, "non_hdl": 128})
+
+
+# --- regression: Ibn Sina lipid photo where "<" was read as ">" and 128 as 428 ---
+def test_upper_limit_misread_as_lower_limit_for_ldl():
+    from medilens.pipeline import extract_from_text
+    t = extract_from_text("S. LDL Cholesterol 69 mg/dL > 100")["tests"][0]
+    assert t["printed_low"] is None and t["printed_high"] is None and t["needs_check"]
+
+
+def test_non_hdl_is_checked_against_total_minus_hdl():
+    from medilens.consistency import check
+    assert check({"cholesterol": 155, "hdl": 27, "non_hdl": 428})
+    assert not check({"cholesterol": 155, "hdl": 27, "non_hdl": 128})
+
+
+def test_lab_name_repeated_words_removed():
+    from medilens.meta import find_lab_name
+    assert find_lab_name("Ibn Sina Ibn Sina Diagnostic & Consultation Center,Bogura").startswith("Ibn Sina Diagnostic")

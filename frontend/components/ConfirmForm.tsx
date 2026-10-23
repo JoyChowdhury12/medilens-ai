@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { api, fileUrl } from '@/lib/api';
 import { today } from '@/lib/format';
 import { useT } from '@/lib/i18n';
+import LoadingPanel, { recordDuration } from './LoadingPanel';
 import { DraftTest, Report } from '@/lib/types';
 
 type Row = DraftTest & { key: number };
@@ -32,6 +33,7 @@ export default function ConfirmForm({ report, rows: initial, onDone }: {
 
   async function submit() {
     setBusy(true); setErr('');
+    const started = Date.now();
     try {
       const r = await api<Report>(`/reports/${report.id}/confirm`, {
         body: {
@@ -43,6 +45,7 @@ export default function ConfirmForm({ report, rows: initial, onDone }: {
           })),
         },
       });
+      recordDuration('confirm', (Date.now() - started) / 1000);
       onDone(r);
     } catch (e: any) { setErr(e.message || t('genericError')); setBusy(false); }
   }
@@ -88,13 +91,17 @@ export default function ConfirmForm({ report, rows: initial, onDone }: {
       {!empty && (
         <>
           <div className="mt-6 grid gap-4 sm:grid-cols-2">
-            <div><label htmlFor="date">{t('reportDate')}</label><input id="date" type="date" className="w-full" value={date} max={today()} onChange={(e) => setDate(e.target.value)} /></div>
-            <div><label htmlFor="lab">{t('labName')}</label><input id="lab" className="w-full" value={lab} onChange={(e) => setLab(e.target.value)} maxLength={120} /></div>
+            <div><label htmlFor="date">{t('reportDate')}</label><input id="date" type="date" className="w-full" value={date} max={today()} onChange={(e) => setDate(e.target.value)} />
+              {report.draft?.meta?.report_date && date === report.draft.meta.report_date && <p className="mt-1 text-xs text-muted">{t('fromReport')}</p>}</div>
+            <div><label htmlFor="lab">{t('labName')}</label><input id="lab" className="w-full" value={lab} onChange={(e) => setLab(e.target.value)} maxLength={120} />
+              {report.draft?.meta?.lab_name && lab === report.draft.meta.lab_name && <p className="mt-1 text-xs text-muted">{t('fromReport')}</p>}</div>
           </div>
           {err && <p role="alert" className="mt-4 text-bad">{err}</p>}
-          <button className="btn mt-6 w-full sm:w-auto" disabled={busy || rows.some((r) => r.value === null || String(r.value) === '' || isNaN(Number(r.value)))} onClick={submit}>
-            {busy ? t('working') : t('confirmBtn')}
-          </button>
+          {busy ? <LoadingPanel kind="confirm" hint={4 + rows.length * 1.5} /> : (
+            <button className="btn mt-6 w-full sm:w-auto" disabled={rows.some((r) => r.value === null || String(r.value) === '' || isNaN(Number(r.value)))} onClick={submit}>
+              {t('confirmBtn')}
+            </button>
+          )}
         </>
       )}
     </div>

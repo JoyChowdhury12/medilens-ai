@@ -150,10 +150,19 @@ def read_lines_rapid(img: np.ndarray) -> list:
     if w != 2000:
         img = cv2.resize(img, (2000, int(h * 2000 / w)), interpolation=cv2.INTER_CUBIC if w < 2000 else cv2.INTER_AREA)
     result, _ = _RAPID(img)
+    boxes = [(box, text, conf) for box, text, conf in (result or [])]
+    # Phone photos are often a little tilted: the result on the right then sits higher or lower than its name.
+    # Measure the tilt from the long text boxes and straighten the y positions before grouping into rows.
+    slopes = sorted((b[1][1] - b[0][1]) / (b[1][0] - b[0][0]) for b, _, _ in boxes
+                    if b[1][0] - b[0][0] > 3 * abs(b[3][1] - b[0][1]) and b[1][0] > b[0][0])
+    tilt = slopes[len(slopes) // 2] if slopes else 0.0
     items = []
-    for box, text, conf in result or []:
+    for box, text, conf in boxes:
         ys, xs = [p[1] for p in box], [p[0] for p in box]
-        items.append(((min(ys) + max(ys)) / 2, min(xs), text.replace("μ", "µ"), float(conf), max(ys) - min(ys)))
+        x_mid = (min(xs) + max(xs)) / 2
+        y_mid = (min(ys) + max(ys)) / 2 - tilt * x_mid
+        height = max(ys) - min(ys) - abs(tilt) * (max(xs) - min(xs))
+        items.append((y_mid, min(xs), text.replace("μ", "µ"), float(conf), max(height, 8.0)))
     items.sort()
     rows = []
     for it in items:

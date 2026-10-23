@@ -35,6 +35,14 @@ def check(values: Dict[str, float]) -> List[dict]:
              f"হিমোগ্লোবিন, RBC ও MCH-এর মান একটির সাথে আরেকটি মিলছে না (MCH প্রায় {hb / rbc * 10:.1f} হওয়ার কথা)। "
              "কাগজের রিপোর্টের সাথে মিলিয়ে দেখুন।")
 
+    chol, hdl, nonhdl = v.get("cholesterol"), v.get("hdl"), v.get("non_hdl")
+    if chol and hdl and nonhdl and chol > hdl and _off(nonhdl, chol - hdl, 0.08):
+        warn(["cholesterol", "hdl", "non_hdl"],
+             f"Total cholesterol, HDL and Non-HDL do not fit together (Non-HDL should be about {chol - hdl:.0f}). "
+             "Please check these values against the paper report.",
+             f"মোট কোলেস্টেরল, HDL ও Non-HDL-এর মান একটির সাথে আরেকটি মিলছে না (Non-HDL প্রায় {chol - hdl:.0f} হওয়ার কথা)। "
+             "কাগজের রিপোর্টের সাথে মিলিয়ে দেখুন।")
+
     diff = [v.get(c) for c in ("neutrophils", "lymphocytes", "eosinophils", "monocytes", "basophils")]
     if all(x is not None for x in diff) and not 95 <= sum(diff) <= 105:
         warn(["neutrophils", "lymphocytes", "eosinophils", "monocytes", "basophils"],

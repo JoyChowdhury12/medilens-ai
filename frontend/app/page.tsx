@@ -2,6 +2,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { DragEvent, useEffect, useRef, useState } from 'react';
+import LoadingPanel, { recordDuration } from '@/components/LoadingPanel';
 import Icon from '@/components/Icon';
 import Shell from '@/components/Shell';
 import Sparkline from '@/components/Sparkline';
@@ -45,8 +46,10 @@ export default function Home() {
     setBusy(true);
     const form = new FormData();
     form.append('file', file);
+    const started = Date.now();
     try {
       const r = await api<{ id: string }>(`/profiles/${current.id}/reports`, { form });
+      recordDuration('upload', (Date.now() - started) / 1000);
       router.push(`/reports/${r.id}`);
     } catch (e: any) { toast(e.message || t('genericError'), 'error'); setBusy(false); }
     [fileInput, camInput].forEach((r) => { if (r.current) r.current.value = ''; });
@@ -94,9 +97,9 @@ export default function Home() {
             <input ref={camInput} type="file" hidden accept="image/*" capture="environment" onChange={(e) => upload(e.target.files?.[0])} />
             <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-brand-tint text-brand"><Icon name="upload" size={24} /></div>
             <h2 className="mt-3 text-xl">{drag ? t('dropHere') : t('uploadCta')}</h2>
-            <p className="mt-1 text-sm text-muted">{busy ? t('reading') : t('dropHint')}</p>
+            {!busy && <p className="mt-1 text-sm text-muted">{t('dropHint')}</p>}
             {busy ? (
-              <div className="mx-auto mt-4 h-1.5 w-48 overflow-hidden rounded bg-line"><div className="h-full w-1/2 animate-pulse rounded bg-brand" /></div>
+              <LoadingPanel kind="upload" />
             ) : (
               <div className="mt-4 flex flex-wrap justify-center gap-3">
                 <button className="btn gap-2" disabled={!current} onClick={() => fileInput.current?.click()}><Icon name="file" size={18} />{t('chooseFile')}</button>

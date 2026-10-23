@@ -54,7 +54,10 @@ export class ReportsService {
     const report = await this.reports.save(this.reports.create({
       profileId: profile.id, status: 'DRAFT', filePath, fileMime: kind.mime,
       quality: extracted.quality ?? null,
-      draft: { tests: extracted.tests, message: extracted.message ?? null, extractor: extracted.extractor },
+      draft: { tests: extracted.tests, message: extracted.message ?? null, extractor: extracted.extractor, meta: extracted.meta ?? null },
+      // The report date and lab name read from the header: only suggestions, the user checks them before confirming.
+      reportDate: /^\d{4}-\d{2}-\d{2}$/.test(extracted.meta?.report_date ?? '') ? extracted.meta.report_date : null,
+      labName: typeof extracted.meta?.lab_name === 'string' ? extracted.meta.lab_name.slice(0, 120) : null,
     }));
     return this.view(report, []);
   }

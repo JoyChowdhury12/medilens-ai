@@ -6,6 +6,7 @@
 from . import consistency, guard, local_model
 from .dictionary import get_test, match_test
 from .explain_bn import DISCLAIMER_BN, explain_one, is_safe, summary
+from .meta import find_meta
 from .extract_rules import extract, merge_records, parse_line
 from .ocr import OcrLine, ocr_image_bytes, ocr_image_passes
 from .range_engine import classify
@@ -36,23 +37,35 @@ def _records_from_model(items, lines):
     return records
 
 
+RAPID_WEIGHT = 1.5   # in a vote, one read by the deep-learning reader counts a bit more than one Tesseract read
+
+
 def _read_photo(image_bytes: bytes):
-    """Read a photo several ways and vote. A clean page (high confidence, many tests) stops after the first read."""
+    """Read a photo with the deep-learning OCR AND Tesseract and vote between the reads (more reads if still shaky).
+    The 2nd reader fills tests/ranges the first one lost; where they disagree on a value the vote decides."""
     quality, passes = ocr_image_passes(image_bytes)
-    _, lines = next(passes)
-    reads = [extract(lines)]
-    for _, more in passes:
-        records = reads[0] if len(reads) == 1 else merge_records(*reads)
+    reads, all_lines = [], []
+    min_reads = 1
+    while True:
+        item = next(passes, None)
+        if item is None:
+            break
+        engine, lines = item
+        all_lines += lines
+        recs = extract(lines)
+        for r in recs:
+            r["_w"] = RAPID_WEIGHT if engine == "rapid" else 1.0
+        reads.append(recs)
+        if engine == "rapid":
+            min_reads = 2                                    # always get a second opinion after the deep-learning read
+        records = merge_records(*reads)
         mean_conf = sum(r["confidence"] for r in records) / len(records) if records else 0
-        if len(reads) == 1 and len(records) >= 14 and mean_conf >= 0.9:
-            break                                            # clean scan: no need to read again
-        lines = lines + more
-        reads.append(extract(more))
-        if len(reads) == 3:                                  # three reads are enough to vote; the 4th only rescues
-            merged = merge_records(*reads)                   # when the result is still thin
-            if len(merged) >= 12:
-                break
-    return quality, lines, merge_records(*reads)
+        good = len(records) >= 5 and mean_conf >= 0.75
+        if (len(reads) >= min_reads and good) or (len(reads) >= 3 and len(records) >= 12) or len(reads) >= 4:
+            break
+    for r in (merged := merge_records(*reads)):
+        r.pop("_w", None)
+    return quality, all_lines, merged
 
 
 def extract_from_image(image_bytes: bytes) -> dict:
@@ -66,7 +79,8 @@ def extract_from_image(image_bytes: bytes) -> dict:
     if not records:
         records = records_rules
     message = None if records else _NO_TESTS_MSG
-    return {"quality": quality, "extractor": extractor, "tests": records, "message": message, "ocr_text": ocr_text}
+    return {"quality": quality, "extractor": extractor, "tests": records, "message": message, "ocr_text": ocr_text,
+            "meta": find_meta(ocr_text)}
 
 
 def extract_from_pdf(pdf_bytes: bytes) -> dict:
@@ -90,14 +104,15 @@ def extract_from_pdf(pdf_bytes: bytes) -> dict:
         all_lines += lines
         page_records.append(recs)
     records = merge_records(*page_records)
+    ocr_text = "\n".join(l.text for l in all_lines)
     return {"quality": quality, "extractor": "rules", "tests": records,
-            "message": None if records else _NO_TESTS_MSG, "ocr_text": "\n".join(l.text for l in all_lines)}
+            "message": None if records else _NO_TESTS_MSG, "ocr_text": ocr_text, "meta": find_meta(ocr_text)}
 
 
 def extract_from_text(text: str) -> dict:
     """Same as extract_from_image but for text (useful for tests and PDFs with a text layer)."""
     lines = [OcrLine(t, 1.0) for t in text.splitlines() if t.strip()]
-    return {"quality": None, "extractor": "rules", "tests": extract(lines), "ocr_text": text}
+    return {"quality": None, "extractor": "rules", "tests": extract(lines), "ocr_text": text, "meta": find_meta(text)}
 
 
 def interpret(tests: list, sex: str = None, age: int = None) -> dict:
