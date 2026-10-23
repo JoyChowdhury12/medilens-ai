@@ -6,7 +6,7 @@ import Icon from './Icon';
 
 type Kind = 'upload' | 'confirm';
 
-const DEFAULT_SECONDS: Record<Kind, number> = { upload: 20, confirm: 10 };
+const DEFAULT_SECONDS: Record<Kind, number> = { upload: 20, confirm: 4 };
 const STAGES: Record<Kind, string[]> = {
   upload: ['loadUp1', 'loadUp2', 'loadUp3', 'loadUp4'],
   confirm: ['loadCf1', 'loadCf2', 'loadCf3'],
@@ -18,7 +18,7 @@ const TIPS: Record<Kind, string[]> = { upload: ['tipUp1', 'tipUp2', 'tipUp3'], c
 /** The usual time for this step on this computer: learnt from the last runs (kept only in this browser). */
 function expectedSeconds(kind: Kind, hint?: number) {
   try {
-    const saved = Number(localStorage.getItem(`ml_time_${kind}`));
+    const saved = Number(localStorage.getItem(`ml_time2_${kind}`));
     if (saved > 1 && saved < 300) return saved;
   } catch { /* storage blocked: use the default */ }
   return hint ?? DEFAULT_SECONDS[kind];
@@ -27,8 +27,8 @@ function expectedSeconds(kind: Kind, hint?: number) {
 /** Call when the step finished successfully, so the next estimate is closer to this computer's real speed. */
 export function recordDuration(kind: Kind, seconds: number) {
   try {
-    const old = Number(localStorage.getItem(`ml_time_${kind}`)) || seconds;
-    localStorage.setItem(`ml_time_${kind}`, String(Math.round((old * 0.5 + seconds * 0.5) * 10) / 10));
+    const old = Number(localStorage.getItem(`ml_time2_${kind}`)) || seconds;
+    localStorage.setItem(`ml_time2_${kind}`, String(Math.round((old * 0.5 + seconds * 0.5) * 10) / 10));
   } catch { /* ignore */ }
 }
 

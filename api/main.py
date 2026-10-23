@@ -12,7 +12,7 @@ from pydantic import BaseModel
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from medilens import local_model  # noqa: E402
-from medilens.pipeline import extract_from_image, extract_from_pdf, extract_from_text, interpret  # noqa: E402
+from medilens.pipeline import explain_with_ai, extract_from_image, extract_from_pdf, extract_from_text, interpret  # noqa: E402
 
 app = FastAPI(title="MediLens AI Service", version="0.1.0",
               description="Reads English lab reports and explains results in Bangla. No external AI API is used.")
@@ -35,6 +35,8 @@ class ConfirmedTest(BaseModel):
 class InterpretIn(BaseModel):
     sex: Optional[Literal["male", "female"]] = None
     age: Optional[int] = None
+    use_model: bool = True
+    codes: Optional[List[str]] = None          # /explain: write only these (the website asks one at a time to show progress)
     tests: List[ConfirmedTest]
 
 
@@ -72,4 +74,10 @@ def extract_text(body: TextIn):
 @app.post("/interpret")
 def interpret_tests(body: InterpretIn):
     """Step 2: send the CONFIRMED values. Returns status, reasons, Bangla explanations and next step."""
-    return interpret([t.model_dump() for t in body.tests], body.sex, body.age)
+    return interpret([t.model_dump() for t in body.tests], body.sex, body.age, body.use_model)
+
+
+@app.post("/explain")
+def explain_tests(body: InterpretIn):
+    """Model-written Bangla explanations for the out-of-range values ({code: text}); slower, called in the background."""
+    return {"explanations": explain_with_ai([t.model_dump() for t in body.tests], body.sex, body.age, body.codes)}

@@ -2,6 +2,7 @@
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
+import AiProgress from '@/components/AiProgress';
 import ConfirmForm from '@/components/ConfirmForm';
 import Icon from '@/components/Icon';
 import ResultRow from '@/components/ResultRow';
@@ -32,6 +33,27 @@ export default function ReportPage() {
   const [share, setShare] = useState<{ url: string; expires: string } | null>(null);
 
   useEffect(() => { api<Report>(`/reports/${id}`).then(setReport).catch((e) => setErr(e.message)); }, [id]);
+  // While our model is still writing the Bangla explanations, check every 2 seconds (for up to 5 minutes) and show
+  // each finished explanation straight away.
+  const [aiFinished, setAiFinished] = useState(false);
+  useEffect(() => {
+    if (!report?.aiPending) return;
+    const started = Date.now();
+    const timer = setInterval(async () => {
+      if (Date.now() - started > 300_000) { clearInterval(timer); return; }
+      try {
+        const fresh = await api<Report>(`/reports/${id}`);
+        setReport(fresh);
+        if (!fresh.aiPending) { clearInterval(timer); setAiFinished(true); }
+      } catch { /* try again next time */ }
+    }, 2000);
+    return () => clearInterval(timer);
+  }, [report?.aiPending, id]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {                 // the "done" summary closes by itself after a while
+    if (!aiFinished) return;
+    const id2 = setTimeout(() => setAiFinished(false), 12000);
+    return () => clearTimeout(id2);
+  }, [aiFinished]);
   useEffect(() => {
     if (!report || report.status !== 'CONFIRMED') return;
     api<HistoryItem[]>(`/profiles/${report.profileId}/reports`)
@@ -128,6 +150,10 @@ export default function ReportPage() {
         <div role="alert" className="mt-4 flex gap-3 rounded-lg border border-crit/30 border-l-4 border-l-crit bg-crit-tint px-4 py-3 font-medium text-crit">
           <Icon name="alert" className="mt-0.5 shrink-0" />{t('urgentBanner')}
         </div>
+      )}
+
+      {report.status === 'CONFIRMED' && (report.aiPending || aiFinished) && (report.aiTotal ?? 0) > 0 && (
+        <AiProgress report={report} finished={!report.aiPending} onClose={() => setAiFinished(false)} />
       )}
 
       {(report.warnings ?? []).map((w, i) => (

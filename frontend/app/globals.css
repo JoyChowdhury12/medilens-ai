@@ -49,7 +49,33 @@
 .pop-in { animation: popIn .35s ease-out; }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
 .fade-in { animation: fadeIn .4s ease-out; }
+/* "Where we read it" photo panel */
+.zoom-btn { display: inline-flex; align-items: center; gap: 4px; min-width: 34px; height: 32px; justify-content: center; border: 1px solid #dde2e8; border-radius: 8px; background: #fff; font-size: 14px; color: #5b6673; padding: 0 8px; }
+.zoom-btn:hover:not(:disabled) { border-color: #0e6e8c; color: #0e6e8c; } .zoom-btn:disabled { opacity: .45; }
+.spot { position: absolute; border: 1.5px dashed rgba(14,110,140,.6); background: rgba(14,110,140,.06); border-radius: 4px; cursor: pointer; transition: background .15s, border-color .15s; }
+.spot:hover { background: rgba(14,110,140,.18); border-style: solid; }
+.spot-check { border-color: rgba(168,106,0,.85); background: rgba(253,243,224,.55); }
+.spot-tip { position: absolute; left: 0; bottom: calc(100% + 4px); white-space: nowrap; background: #1b2430; color: #fff; font-size: 12px; padding: 3px 8px; border-radius: 6px; pointer-events: none; z-index: 3; }
+.spot-sel { position: absolute; border: 2.5px solid #0e6e8c; border-radius: 6px; box-shadow: 0 0 0 9999px rgba(20,30,40,.36), 0 0 0 6px rgba(14,110,140,.25); z-index: 2; pointer-events: none; animation: popIn .3s ease-out; }
+.spot-tag { position: absolute; left: -2px; bottom: calc(100% + 8px); white-space: nowrap; background: #0e6e8c; color: #fff; font-size: 12.5px; font-weight: 600; padding: 3px 10px; border-radius: 7px; box-shadow: 0 4px 12px rgba(0,0,0,.2); }
+.spot-tag::after { content: ''; position: absolute; left: 16px; top: 100%; border: 5px solid transparent; border-top-color: #0e6e8c; }
+
+.row-selected { background: #f2f9fb; box-shadow: inset 0 0 0 1.5px #0e6e8c, 0 0 0 4px rgba(14,110,140,.08); border-bottom-color: transparent; }
+
+/* AI progress card */
+@keyframes shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+.ai-shimmer { background-image: linear-gradient(90deg, #e6f2f6 0%, #ffffff 50%, #e6f2f6 100%); background-size: 200% 100%; animation: shimmer 1.6s linear infinite; }
+.ai-topline { background: linear-gradient(90deg, #0e6e8c, #3fb6c9, #0e6e8c); background-size: 200% 100%; animation: shimmer 2.4s linear infinite; }
+.ai-orb { background: linear-gradient(135deg, #0e6e8c, #2a9db5); box-shadow: 0 0 0 0 rgba(14,110,140,.35); animation: orb 2s ease-out infinite; }
+@keyframes orb { 0% { box-shadow: 0 0 0 0 rgba(14,110,140,.35); } 70% { box-shadow: 0 0 0 10px rgba(14,110,140,0); } 100% { box-shadow: 0 0 0 0 rgba(14,110,140,0); } }
+.spark-turn { animation: turn 5s linear infinite; } @keyframes turn { to { transform: rotate(360deg); } }
+.ai-text-writing { position: relative; color: #5b6673; }
+.ai-text-writing::after { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, transparent, rgba(255,255,255,.75), transparent); background-size: 200% 100%; animation: shimmer 1.6s linear infinite; pointer-events: none; }
+@keyframes aiflash { 0% { background-color: #e6f2f6; } 100% { background-color: transparent; } }
+.ai-new { animation: aiflash 2.6s ease-out; border-radius: 8px; }
+
 @media (prefers-reduced-motion: reduce) {
+  .ai-shimmer, .ai-topline, .ai-orb, .spark-turn, .ai-text-writing::after, .ai-new { animation: none !important; }
   .scan-line, .write-line, .loading-dots span, .pop-in, .fade-in, .progress-fill, .animate-spin, .animate-ping { animation: none !important; }
 }
 .progress-fill {

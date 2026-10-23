@@ -6,15 +6,16 @@ export interface Profile {
 export interface Result {
   id: string; code: string; name: string; nameBn: string; value: number; unit: string;
   rangeLow: number | null; rangeHigh: number | null; rangeSource: string | null;
-  status: Status; direction: string | null; reason: string; explanationBn: string;
+  status: Status; direction: string | null; reason: string; explanationBn: string; aiWritten?: boolean; aiState?: 'waiting' | 'writing' | 'done' | 'kept' | null;
 }
 export interface DraftTest {
   code: string; name: string; raw_name?: string; value: number; unit: string;
   printed_low: number | null; printed_high: number | null; needs_check?: boolean; source_line?: string;
+  box?: number[] | null; value_box?: number[] | null; reads_agree?: number; reads_found?: number;
 }
 export interface Report {
-  id: string; profileId: string; status: 'DRAFT' | 'CONFIRMED'; labName: string | null; reportDate: string | null;
-  quality: { problems: string[] } | null;
+  id: string; profileId: string; status: 'DRAFT' | 'CONFIRMED'; labName: string | null; reportDate: string | null; aiPending?: boolean; aiTotal?: number; aiDone?: number;
+  quality: { problems: string[] } | null; fileMime?: string;
   draft: { tests: DraftTest[]; message: string | null; meta?: { report_date: string | null; lab_name: string | null } | null } | null;
   nextStep: { urgency: string; urgency_text_bn: string; specialist: string | null; specialist_bn: string | null } | null;
   summaryBn: string | null; warnings: { codes: string[]; text: string; text_bn: string }[] | null; disclaimerBn: string; results: Result[]; createdAt: string;

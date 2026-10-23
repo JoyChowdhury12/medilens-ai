@@ -250,3 +250,60 @@ def test_non_hdl_is_checked_against_total_minus_hdl():
 def test_lab_name_repeated_words_removed():
     from medilens.meta import find_lab_name
     assert find_lab_name("Ibn Sina Ibn Sina Diagnostic & Consultation Center,Bogura").startswith("Ibn Sina Diagnostic")
+
+
+def test_fast_interpret_does_not_call_the_model(monkeypatch):
+    from medilens import local_model, pipeline
+    monkeypatch.setattr(local_model, "enabled", lambda: True)
+    called = []
+    monkeypatch.setattr(local_model, "explain_with_model", lambda *a, **k: called.append(1) or None)
+    out = pipeline.interpret([{"code": "hemoglobin", "value": 9.1}], "female", 30, use_model=False)
+    assert not called and out["model_available"] and out["results"][0]["explanation_source"] == "template"
+
+
+def test_background_explanations_keep_only_safe_texts(monkeypatch):
+    from medilens import local_model, pipeline
+    monkeypatch.setattr(local_model, "enabled", lambda: True)
+    good = "আপনার হিমোগ্লোবিন ৯.১, যা স্বাভাবিকের চেয়ে কম। এটি রক্তস্বল্পতার ইঙ্গিত হতে পারে। একজন ডাক্তারের পরামর্শ নিন।"
+    monkeypatch.setattr(local_model, "explain_with_model",
+                        lambda name, *a, **k: good if name == "Hemoglobin" else "Take 2 tablets of iron daily.")
+    out = pipeline.explain_with_ai([{"code": "hemoglobin", "value": 9.1}, {"code": "ferritin", "value": 8}], "female", 30)
+    assert out == {"hemoglobin": good}
+
+
+# --- robustness: blurred photos ---
+def test_digits_inside_units_are_not_values():
+    from medilens.pipeline import extract_from_text
+    assert extract_from_text("ESR mm/1st hr 0 - 20")["tests"] == []          # the result itself was not readable
+    assert extract_from_text("ESR 11 mm/1st hr 0 - 20")["tests"][0]["value"] == 11
+
+
+def test_lost_decimal_point_is_repaired_and_flagged():
+    from medilens.pipeline import extract_from_text
+    t = extract_from_text("Total WBCCount 78 KUL 40-11.0")["tests"][0]
+    assert t["value"] == 7.8 and (t["printed_low"], t["printed_high"]) == (4.0, 11.0) and t["needs_check"]
+
+
+def test_impossible_value_stays_flagged_even_when_reads_agree():
+    from medilens.extract_rules import merge_records, parse_line
+    a = parse_line("HCT (PCV) 301 % 36 - 46")
+    assert a["implausible"] and a["needs_check"]
+    out = merge_records([dict(a)], [dict(a)], [dict(a)])[0]
+    assert out["needs_check"]
+
+
+def test_barcode_text_is_not_a_test():
+    from medilens.pipeline import extract_from_text
+    assert extract_from_text("K 4658")["tests"] == []
+    assert extract_from_text("K 4.2 mmol/L 3.5 - 5.1")["tests"][0]["value"] == 4.2
+
+
+def test_each_value_keeps_where_it_was_on_the_photo():
+    from medilens.extract_rules import extract, merge_records
+    from medilens.ocr import OcrLine
+    line = OcrLine("Haemoglobin 9.2 g/dL 12.0 - 15.5", 0.95, box=(0.06, 0.23, 0.77, 0.25),
+                   words=[("Haemoglobin", (0.06, 0.23, 0.2, 0.25)), ("9.2", (0.38, 0.23, 0.41, 0.25)), ("g/dL", (0.5, 0.23, 0.55, 0.25))])
+    rec = extract([line])[0]
+    assert rec["box"] == [0.06, 0.23, 0.77, 0.25] and rec["value_box"] == [0.38, 0.23, 0.41, 0.25]
+    merged = merge_records([dict(rec)], [dict(rec)])[0]
+    assert merged["reads_agree"] == 2 and merged["reads_found"] == 2 and merged["box"]

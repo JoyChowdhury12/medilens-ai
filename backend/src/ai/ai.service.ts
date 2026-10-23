@@ -14,10 +14,10 @@ export class AiService {
   private base: string;
   constructor(cfg: ConfigService) { this.base = cfg.get('AI_SERVICE_URL') || 'http://localhost:8000'; }
 
-  private async call(path: string, init: RequestInit) {
+  private async call(path: string, init: RequestInit, timeoutMs = 120_000) {
     let res: Response;
     try {
-      res = await fetch(this.base + path, { ...init, signal: AbortSignal.timeout(120_000) });
+      res = await fetch(this.base + path, { ...init, signal: AbortSignal.timeout(timeoutMs) });
     } catch {
       throw new ServiceUnavailableException('The report reader is not available right now. Please try again shortly.');
     }
@@ -35,12 +35,22 @@ export class AiService {
     return this.call('/extract', { method: 'POST', body: form });
   }
 
+  /** Fast: statuses, reasons, specialist and template explanations (the model is not used here). */
   interpret(tests: ConfirmedTest[], sex: string | null, age?: number | null) {
     return this.call('/interpret', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ sex, age: age ?? null, tests }),
+      body: JSON.stringify({ sex, age: age ?? null, tests, use_model: false }),
     });
+  }
+
+  /** Slow: the fine-tuned model's Bangla explanations for out-of-range values, as { code: text }. */
+  explain(tests: ConfirmedTest[], sex: string | null, age?: number | null, codes?: string[]): Promise<{ explanations: Record<string, string> }> {
+    return this.call('/explain', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sex, age: age ?? null, tests, codes: codes ?? null }),
+    }, 180_000);
   }
 }
 

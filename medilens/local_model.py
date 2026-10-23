@@ -11,6 +11,7 @@ The model is only ever called on localhost; report data never leaves your server
 import json
 import os
 import re
+import urllib.error
 import urllib.request
 from typing import Optional
 
@@ -75,6 +76,16 @@ def build_explain_prompt(name, name_bn, value, unit, status, direction, low, hig
                                     status=f"{status}/{direction}" if direction else status, range=rng, who=who, related=rel)
 
 
+# How many explanations to write at the same time. Ollama must allow it: set OLLAMA_NUM_PARALLEL to the same number.
+PARALLEL = max(1, int(os.getenv("MEDILENS_MODEL_PARALLEL", "4")))
+
+
+def extract_enabled() -> bool:
+    """Reading the report with the language model is OFF unless asked: our model is fine-tuned for explanations,
+    and the OCR + rules extractor is faster and tested (MEDILENS_MODEL_EXTRACT=1 turns it on)."""
+    return enabled() and os.getenv("MEDILENS_MODEL_EXTRACT") == "1"
+
+
 def enabled() -> bool:
     return MODEL_URL.startswith(("http://localhost", "http://127.0.0.1"))
 
@@ -82,15 +93,22 @@ def enabled() -> bool:
 def _generate(prompt: str, timeout: int = 60) -> Optional[str]:
     if not enabled():
         return None
-    body = json.dumps({"model": MODEL_NAME, "prompt": prompt, "stream": False,
-                       "think": False, "options": {"temperature": 0.1}}).encode()
-    req = urllib.request.Request(f"{MODEL_URL}/api/generate", data=body,
-                                 headers={"Content-Type": "application/json"})
-    try:
-        with urllib.request.urlopen(req, timeout=timeout) as resp:
-            return json.loads(resp.read())["response"]
-    except Exception:
-        return None  # any problem -> caller falls back to rules/templates
+    for think in (False, None):   # some models (e.g. Gemma) reject the "think" option: retry without it
+        payload = {"model": MODEL_NAME, "prompt": prompt, "stream": False, "keep_alive": "30m",   # stay loaded
+                   "options": {"temperature": 0.1, "num_predict": 260}}                                # 2-4 sentences
+        if think is not None:
+            payload["think"] = think
+        req = urllib.request.Request(f"{MODEL_URL}/api/generate", data=json.dumps(payload).encode(),
+                                     headers={"Content-Type": "application/json"})
+        try:
+            with urllib.request.urlopen(req, timeout=timeout) as resp:
+                return json.loads(resp.read())["response"]
+        except urllib.error.HTTPError as e:
+            if e.code != 400 or think is None:
+                return None
+        except Exception:
+            return None  # any problem -> caller falls back to rules/templates
+    return None
 
 
 def extract_with_model(ocr_text: str) -> Optional[list]:

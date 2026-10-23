@@ -1,10 +1,10 @@
-import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, Logger, NotFoundException, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { randomBytes, randomUUID } from 'crypto';
 import { promises as fs } from 'fs';
 import { join } from 'path';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, In, Repository } from 'typeorm';
 import { AiService } from '../ai/ai.service';
 import { Profile, Reminder, Report, TestResult } from '../entities';
 import { ProfilesService } from '../profiles/profiles.service';
@@ -26,8 +26,9 @@ function sniff(buf: Buffer): { mime: string; ext: string } | null {
 }
 
 @Injectable()
-export class ReportsService {
+export class ReportsService implements OnModuleInit {
   private uploadDir: string;
+  private log = new Logger('Reports');
   constructor(
     @InjectRepository(Report) private reports: Repository<Report>,
     @InjectRepository(TestResult) private results: Repository<TestResult>,
@@ -37,6 +38,12 @@ export class ReportsService {
     private ds: DataSource,
     cfg: ConfigService,
   ) { this.uploadDir = cfg.get('UPLOAD_DIR') || './uploads'; }
+
+  /** A background job cannot survive a restart: clear any "still writing" flags left from before. */
+  async onModuleInit() {
+    await this.reports.update({ aiPending: true }, { aiPending: false }).catch(() => undefined);
+    await this.results.update({ aiState: In(['waiting', 'writing']) as any }, { aiState: 'kept' }).catch(() => undefined);
+  }
 
   // ---------- step 1: upload and let the AI read it ----------
   async upload(userId: string, profileId: string, file?: Express.Multer.File) {
@@ -70,11 +77,10 @@ export class ReportsService {
     const codes = dto.tests.map((t) => t.code);
     if (new Set(codes).size !== codes.length) throw new BadRequestException('Each test can appear only once.');
 
-    const out = await this.ai.interpret(
-      dto.tests.map((t) => ({ code: t.code, value: t.value, printed_low: t.printedLow ?? null, printed_high: t.printedHigh ?? null })),
-      profile.sex,
-      profile.birthDate ? Math.floor((Date.now() - new Date(profile.birthDate).getTime()) / (365.25 * 86400_000)) : null,
-    );
+    const tests = dto.tests.map((t) => ({ code: t.code, value: t.value, printed_low: t.printedLow ?? null, printed_high: t.printedHigh ?? null }));
+    const age = profile.birthDate ? Math.floor((Date.now() - new Date(profile.birthDate).getTime()) / (365.25 * 86400_000)) : null;
+    // Fast answer first (rules + template text, about a second); the model's wording follows in the background.
+    const out = await this.ai.interpret(tests, profile.sex, age);
     if (!out.results?.length) throw new BadRequestException('None of these tests are supported yet.');
 
     const rows = await this.ds.transaction(async (tx) => {
@@ -84,6 +90,7 @@ export class ReportsService {
         reportId, code: r.code, name: r.name, nameBn: r.name_bn, value: r.value, unit: r.unit,
         rangeLow: r.low ?? null, rangeHigh: r.high ?? null, rangeSource: r.range_source ?? null,
         status: r.status, direction: r.direction || null, reason: r.reason, explanationBn: r.explanation_bn,
+        aiState: out.model_available && r.status !== 'normal' ? 'waiting' : null,
       })));
       report.status = 'CONFIRMED';
       report.reportDate = dto.reportDate ?? report.reportDate ?? new Date().toISOString().slice(0, 10);
@@ -91,13 +98,55 @@ export class ReportsService {
       report.nextStep = out.next_step;
       report.summaryBn = out.summary_bn;
       report.warnings = out.warnings?.length ? out.warnings : null;
+      report.aiPending = !!out.model_available && out.results.some((r: any) => r.status !== 'normal');
+      report.aiTotal = report.aiPending ? out.results.filter((r: any) => r.status !== 'normal').length : 0;
+      report.aiDone = 0;
       await tx.save(Report, report);
 
       const rem = this.autoReminder(userId, profile, report, out);
       if (rem) await tx.save(Reminder, tx.create(Reminder, rem));
       return saved;
     });
+    if (report.aiPending) {
+      const order = (this.view(report, rows).results as TestResult[]).filter((r) => r.status !== 'normal').map((r) => r.code);   // same order as on screen
+      void this.improveWording(report.id, tests, profile.sex, age, order);
+    }
     return this.view(report, rows);
+  }
+
+  /** Background: ask our fine-tuned model for clearer Bangla, a few values at a time, in the order they are shown.
+   *  Each finished explanation is saved straight away (if it passed the safety checks), so the page can show progress. */
+  private async improveWording(reportId: string, tests: { code: string; value: number }[], sex: string | null, age: number | null,
+                               codes: string[]) {
+    const parallel = Math.max(1, Number(process.env.AI_PARALLEL) || 4);
+    let next = 0;
+    const worker = async () => {
+      while (next < codes.length) {
+        const code = codes[next++];
+        let state: 'done' | 'kept' = 'kept';
+        try {
+          await this.results.update({ reportId, code }, { aiState: 'writing' });
+          const { explanations } = await this.ai.explain(tests as any, sex, age, [code]);
+          const text = explanations?.[code];
+          const value = tests.find((t) => t.code === code)?.value;
+          // match the value too: if the person edited the report meanwhile, an old text is not written over new results
+          if (typeof text === 'string' && text.trim() && value !== undefined) {
+            await this.results.update({ reportId, code, value }, { explanationBn: text.trim(), aiWritten: true });
+            state = 'done';
+          }
+        } catch (e: any) {
+          this.log.warn(`AI wording skipped for ${code} in report ${reportId}: ${e?.message ?? e}`);
+        } finally {
+          await this.results.update({ reportId, code }, { aiState: state }).catch(() => undefined);
+          await this.reports.increment({ id: reportId }, 'aiDone', 1).catch(() => undefined);
+        }
+      }
+    };
+    try {
+      await Promise.all(Array.from({ length: Math.min(parallel, codes.length) }, worker));
+    } finally {
+      await this.reports.update({ id: reportId }, { aiPending: false }).catch(() => undefined);
+    }
   }
 
   private autoReminder(userId: string, profile: Profile, report: Report, out: any) {
@@ -189,7 +238,7 @@ export class ReportsService {
   }
 
   private view(report: Report, results: TestResult[]) {
-    const sorted = [...results].sort((a, b) => ORDER[a.status] - ORDER[b.status]);
+    const sorted = [...results].sort((a, b) => ORDER[a.status] - ORDER[b.status] || a.name.localeCompare(b.name));   // stable order: rows do not jump when the AI text arrives
     const { profile, results: _r, filePath, ...rest } = report as any;
     return { ...rest, results: sorted, disclaimerBn: DISCLAIMER_BN };
   }

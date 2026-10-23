@@ -135,15 +135,21 @@ def parse_line(text: str, ocr_conf: float = 1.0) -> Optional[dict]:
         return None
     rest = " ".join(tokens[k:])
     # The value comes BEFORE the printed range ("33.00 20.00-45.00 0%": the trailing "0%" is noise).
-    range_start = re.search(rf"{NUM}\s*(?:-|–|to)\s*{NUM}|[<>]\s*=?\s*{NUM}|up\s*to|less than|more than|greater than", rest, re.I)
-    if range_start and not re.search(NUM, rest[:range_start.start()]):
+    # Digits inside a unit are not results: "mm/1st hr", "x10^9/L", "10^3/µL". Blank them out (same length, so
+    # positions stay valid) before looking for the value.
+    rest_v = rest
+    for pattern, _u in UNIT_PATTERNS:
+        rest_v = re.sub(pattern, lambda m: " " * len(m.group(0)), rest_v, flags=re.I)
+    rest_v = re.sub(r"\b1\s*st\b|10\s*\^\s*\d+", lambda m: " " * len(m.group(0)), rest_v, flags=re.I)
+    range_start = re.search(rf"{NUM}\s*(?:-|–|to)\s*{NUM}|[<>]\s*=?\s*{NUM}|up\s*to|less than|more than|greater than", rest_v, re.I)
+    if range_start and not re.search(NUM, rest_v[:range_start.start()]):
         return None          # only a reference range on this line ("PCV 4.50-5.50"): the result is somewhere else
-    head = rest[:range_start.start()] if range_start else rest
+    head = rest_v[:range_start.start()] if range_start else rest_v
     value_match = re.search(NUM, head)
     if value_match:
         # Stray digits can sit between a damaged name and the result ("riaemoglopin 4 12.70 g/dL"):
         # the value is the number right before the unit.
-        pos = unit_position(head)
+        pos = unit_position(rest[:len(head)])
         if pos is not None:
             before = [m for m in re.finditer(NUM, head) if m.end() <= pos]
             if before:
@@ -180,11 +186,19 @@ def parse_line(text: str, ocr_conf: float = 1.0) -> Optional[dict]:
             unit_assumed and code in ("neutrophils", "lymphocytes") and high is not None and high <= 10)
         if absolute:
             return None
+    raw_low, raw_high = low, high
     low, high, repaired = repair_range(test, low, high)
+    lost_point = repaired and any(r is not None and f is not None and abs(r - 10 * f) < 1e-6 for r, f in ((raw_low, low), (raw_high, high)))
+    if lost_point and "." not in value_match.group(0) and high is not None and value > high * 3 and low is not None \
+            and low / 3 <= value / 10 <= high * 3:
+        value = value / 10            # "Total WBC 78 K/uL 40-11.0" was "7.8 ... 4.0-11.0": the same decimal point was lost
+    value_repaired = lost_point and value != to_float(value_match.group(0))
 
     confidence = round(min(ocr_conf, name_score / 100), 2)
     if repaired:
         confidence = min(confidence, 0.7)
+    if value_repaired:
+        confidence = min(confidence, 0.5)        # we changed the number: the person must look at it
     # Direction check: e.g. HDL is only ever "at least X". A printed "< 40" is a misread ">" -> do not trust it.
     std_low, std_high = standard_range(test, None)
     std_low = std_low or None            # a lower limit of 0 means "no lower limit" (LDL, cholesterol ...)
@@ -197,7 +211,10 @@ def parse_line(text: str, ocr_conf: float = 1.0) -> Optional[dict]:
     # Plausibility check: a value far outside the printed range is often an OCR slip
     # (for example a lost decimal point: "1.3" read as "13"). Ask the user to check it.
     ref_low, ref_high = (low, high) if (low is not None or high is not None) else (std_low, std_high)
-    implausible = (ref_high is not None and value > ref_high * 3) or (ref_low and value < ref_low / 3)
+    implausible = (ref_high is not None and value > ref_high * 3) or (ref_low and value < ref_low / 3) \
+        or (unit == "%" and value > 100)
+    if implausible and unit_assumed and low is None and high is None:
+        return None      # no unit, no range and an impossible value: not a test row (e.g. a barcode "K 4658...")
     if implausible:
         confidence = min(confidence, 0.5)
     return {
@@ -224,8 +241,22 @@ def extract(lines: list) -> list:
         rec = parse_line(line.text, getattr(line, "confidence", 1.0))
         if rec and rec["code"] not in seen:
             seen.add(rec["code"])
+            box = getattr(line, "box", None)
+            if box:   # where on the photo: the whole row, and the word holding the value
+                rec["box"] = [round(float(v), 4) for v in box]
+                vb = _value_word_box(getattr(line, "words", []), rec["value"])
+                rec["value_box"] = [round(float(v), 4) for v in vb] if vb else None
             records.append(rec)
     return records
+
+
+def _value_word_box(words, value):
+    for text, box in words:
+        for n in re.findall(NUM, fix_ocr_digits(text)):
+            f = to_float(n)
+            if f is not None and abs(f - value) < 1e-6:
+                return box
+    return None
 
 
 def merge_records(*record_lists) -> list:
@@ -251,6 +282,11 @@ def merge_records(*record_lists) -> list:
         plausible = lambda g: not all(x.get("implausible") for x in g)
         ranked = sorted(votes.values(), key=lambda g: (plausible(g), weight(g), max(x["confidence"] for x in g)), reverse=True)
         winner = dict(max(ranked[0], key=lambda x: (x.get("_w", 1.0), x["confidence"])))   # deep-learning read first
+        winner["reads_agree"], winner["reads_found"] = len(ranked[0]), len(recs)
+        if not winner.get("box"):                       # keep a position from another read of the same value
+            other = next((x for x in ranked[0] if x.get("box")), None)
+            if other:
+                winner["box"], winner["value_box"] = other["box"], other.get("value_box")
         if winner.get("printed_low") is None and winner.get("printed_high") is None:      # take a range another read found
             for other in ranked[0]:
                 if other.get("printed_low") is not None or other.get("printed_high") is not None:
@@ -260,7 +296,8 @@ def merge_records(*record_lists) -> list:
             winner["needs_check"] = True                      # tie between different readings
         elif len(ranked[0]) >= 2:
             winner["confidence"] = round(min(1.0, winner["confidence"] + 0.1), 2)
-            if len(ranked) == 1 and not winner.get("unit_assumed") and not winner.get("range_conflict"):
+            if len(ranked) == 1 and not winner.get("unit_assumed") and not winner.get("range_conflict") \
+                    and not winner.get("implausible"):           # an impossible value stays flagged however often it is read
                 winner["needs_check"] = False                 # several reads agree
         merged[code] = winner
 

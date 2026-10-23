@@ -54,6 +54,11 @@ export class Report {
   /** read-only link for a doctor; valid until shareExpires */
   @Index({ unique: true }) @Column({ type: 'varchar', nullable: true }) shareToken: string | null;
   @Column({ type: 'timestamptz', nullable: true }) shareExpires: Date | null;
+  /** true while our fine-tuned model is still writing the Bangla explanations in the background */
+  @Column({ default: false }) aiPending: boolean;
+  /** progress of that background work: how many explanations to write, and how many are finished */
+  @Column({ default: 0 }) aiTotal: number;
+  @Column({ default: 0 }) aiDone: number;
   @CreateDateColumn() createdAt: Date;
   @OneToMany(() => TestResult, (t) => t.report) results: TestResult[];
 }
@@ -75,6 +80,10 @@ export class TestResult {
   @Column({ type: 'varchar', nullable: true }) direction: string | null;
   @Column({ type: 'text' }) reason: string;
   @Column({ type: 'text' }) explanationBn: string;
+  /** the explanation was written by our fine-tuned model (and passed the safety checks), not the template */
+  @Column({ default: false }) aiWritten: boolean;
+  /** where the background AI is with this value: waiting, writing, done (AI text shown) or kept (template kept) */
+  @Column({ type: 'varchar', nullable: true }) aiState: 'waiting' | 'writing' | 'done' | 'kept' | null;
   @CreateDateColumn() createdAt: Date;
 }
 
