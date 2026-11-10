@@ -14,12 +14,14 @@ import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { fmtDate, today } from '@/lib/format';
 import { useT } from '@/lib/i18n';
+import { useChartColors } from '@/lib/theme';
 import { HistoryItem, Reminder, Trend } from '@/lib/types';
 
 const ORDER: Record<string, number> = { critical: 0, high: 1, low: 1, borderline: 2, normal: 3 };
 
 export default function Home() {
   const { t, lang } = useT();
+  const cc = useChartColors();
   const { current, user, reloadProfiles, setCurrentId } = useAuth();
   const toast = useToast();
   const router = useRouter();
@@ -152,7 +154,7 @@ export default function Home() {
               <p className="mb-3 text-sm text-muted">{t('keyTrendsHint')}</p>
               <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
                 {keyTrends.map((x) => {
-                  const col = x.trend === 'improving' ? '#2b7a4b' : x.trend === 'worsening' ? '#b42318' : '#0e6e8c';
+                  const col = x.trend === 'improving' ? cc.ok : x.trend === 'worsening' ? cc.bad : cc.brand;
                   const last = x.points[x.points.length - 1];
                   return (
                     <Link key={x.code} href={`/trends?code=${x.code}`} className="rounded-lg border border-line p-3 hover:bg-wash">

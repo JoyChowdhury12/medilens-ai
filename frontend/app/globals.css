@@ -11,12 +11,40 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Colour tokens: light (default) and dark. Tailwind colours read these variables. */
+:root {
+  --ink: 27 36 48; --muted: 91 102 115; --line: 221 226 232; --wash: 245 247 249; --canvas: 243 246 248; --surface: 255 255 255;
+  --brand: 14 110 140; --brand-dark: 10 86 110; --brand-tint: 230 242 246;
+  --ok: 43 122 75; --ok-tint: 232 244 236; --warn: 168 106 0; --warn-tint: 253 243 224;
+  --bad: 180 35 24; --bad-tint: 253 236 234; --crit: 122 14 14; --crit-tint: 249 222 222;
+  color-scheme: light;
+}
+.dark {
+  --ink: 230 236 242; --muted: 155 168 181; --line: 52 65 79; --wash: 33 43 54; --canvas: 14 20 26; --surface: 22 30 39;
+  --brand: 28 128 158; --brand-dark: 125 207 228; --brand-tint: 17 52 66;
+  --ok: 94 200 135; --ok-tint: 18 52 36; --warn: 240 183 80; --warn-tint: 58 44 16;
+  --bad: 250 130 118; --bad-tint: 64 26 24; --crit: 255 150 150; --crit-tint: 70 20 20;
+  color-scheme: dark;
+}
+.dark .bg-white { background-color: rgb(var(--surface)); }
+.dark .border-white { border-color: rgb(var(--surface)); }
+.dark .bg-brand-dark { background-color: rgb(8 58 74); }
+.dark .hover\:bg-brand-dark:hover { background-color: rgb(20 100 126); }
+.dark .zoom-btn { background: rgb(var(--surface)); border-color: rgb(var(--line)); color: rgb(var(--muted)); }
+.dark .zoom-btn:hover:not(:disabled) { border-color: rgb(var(--brand-dark)); color: rgb(var(--brand-dark)); }
+.dark .row-selected { background: rgb(var(--brand-tint)); }
+.dark .ai-shimmer { background-image: linear-gradient(90deg, rgb(var(--brand-tint)) 0%, rgb(var(--surface)) 50%, rgb(var(--brand-tint)) 100%); }
+.dark .ai-text-writing::after { background: linear-gradient(90deg, transparent, rgba(255,255,255,.12), transparent); }
+.dark .spot-sel { box-shadow: 0 0 0 9999px rgba(0,0,0,.55), 0 0 0 6px rgba(60,170,200,.3); }
+.dark .spot-check { background: rgba(90,66,16,.5); }
+.dark img.doc-photo { filter: brightness(.92); }
+
 @layer base {
   html { -webkit-text-size-adjust: 100%; }
-  body { @apply bg-canvas font-sans text-ink antialiased; font-size: 17px; line-height: 1.65; }
+  body { @apply bg-canvas font-sans text-ink antialiased; font-size: 1.0625rem; line-height: 1.65; }
   h1 { @apply text-2xl font-semibold leading-snug; }
   h2 { @apply text-lg font-semibold leading-snug; }
-  :focus-visible { outline: 2px solid #0e6e8c; outline-offset: 2px; }
+  :focus-visible { outline: 2px solid rgb(var(--brand)); outline-offset: 2px; }
   input, select { @apply rounded border border-line bg-white px-3 py-2 text-base text-ink; min-height: 44px; }
   input:focus, select:focus { @apply border-brand; }
   label { @apply block text-sm font-medium text-muted; }

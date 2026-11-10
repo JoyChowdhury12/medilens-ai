@@ -14,7 +14,6 @@ import { api, openFile } from '@/lib/api';
 import { bnNum, fmtDate } from '@/lib/format';
 import { useT } from '@/lib/i18n';
 import { DraftTest, HistoryItem, Report } from '@/lib/types';
-import { useBanglaVoice } from '@/lib/useBanglaVoice';
 
 type Filter = 'all' | 'attention' | 'normal';
 
@@ -24,7 +23,6 @@ export default function ReportPage() {
   const router = useRouter();
   const toast = useToast();
   const confirm = useConfirm();
-  const voice = useBanglaVoice();
   const [report, setReport] = useState<Report | null>(null);
   const [others, setOthers] = useState<HistoryItem[]>([]);
   const [editing, setEditing] = useState(false);
@@ -122,13 +120,6 @@ export default function ReportPage() {
   const previous = others.filter((o) => (o.reportDate ?? o.createdAt) <= reportDate)
     .sort((a, b) => (b.reportDate ?? b.createdAt).localeCompare(a.reportDate ?? a.createdAt))[0] ?? others[0];
 
-  const readAloud = () => {
-    if (voice.speaking) return voice.stop();
-    const texts = [report.summaryBn ?? '', report.nextStep?.urgency !== 'none' ? report.nextStep?.urgency_text_bn ?? '' : '']
-      .concat(flagged.map((r) => `${r.nameBn}। ${r.explanationBn}`));
-    voice.speak(texts.filter(Boolean));
-  };
-
   return (
     <Shell>
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -137,11 +128,6 @@ export default function ReportPage() {
           <p className="text-muted">{fmtDate(report.reportDate, lang)}{report.labName ? ` · ${report.labName}` : ''}</p>
         </div>
         <div className="no-print flex flex-wrap gap-2">
-          {voice.supported && (
-            <button className="btn-quiet gap-2" onClick={readAloud} aria-pressed={voice.speaking}>
-              <Icon name={voice.speaking ? 'stop' : 'speaker'} size={18} />{voice.speaking ? t('stopListen') : t('listen')}
-            </button>
-          )}
           <button className="btn-quiet gap-2" onClick={() => window.print()}><Icon name="print" size={18} />{t('print')}</button>
         </div>
       </div>

@@ -3,11 +3,12 @@ import { CartesianGrid, Line, LineChart, ReferenceArea, ResponsiveContainer, Too
 import { useT } from '@/lib/i18n';
 import { fmtDate } from '@/lib/format';
 import { Trend } from '@/lib/types';
-
-const COLOR: Record<string, string> = { normal: '#2b7a4b', borderline: '#a86a00', low: '#b42318', high: '#b42318', critical: '#7a0e0e' };
+import { useChartColors } from '@/lib/theme';
 
 export default function TrendChart({ trend }: { trend: Trend }) {
   const { t, lang } = useT();
+  const c = useChartColors();
+  const COLOR: Record<string, string> = { normal: c.ok, borderline: c.warn, low: c.bad, high: c.bad, critical: c.crit };
   const last = trend.points[trend.points.length - 1];
   const low = last.rangeLow, high = last.rangeHigh;
   const vals = trend.points.map((p) => p.value);
@@ -20,15 +21,15 @@ export default function TrendChart({ trend }: { trend: Trend }) {
       <div className="h-64 w-full" role="img" aria-label={`${trend.name} chart`}>
         <ResponsiveContainer>
           <LineChart data={data} margin={{ top: 10, right: 16, bottom: 0, left: 0 }}>
-            <CartesianGrid stroke="#dde2e8" vertical={false} />
+            <CartesianGrid stroke={c.line} vertical={false} />
             {(low != null || high != null) && (
-              <ReferenceArea y1={low ?? Math.max(0, lo - pad)} y2={high ?? hi + pad} fill="#e8f4ec" fillOpacity={0.9} stroke="#2b7a4b" strokeOpacity={0.25} />
+              <ReferenceArea y1={low ?? Math.max(0, lo - pad)} y2={high ?? hi + pad} fill={c.okTint} fillOpacity={0.9} stroke={c.ok} strokeOpacity={0.25} />
             )}
-            <XAxis dataKey="label" tick={{ fontSize: 12, fill: '#5b6673' }} />
-            <YAxis domain={[Math.max(0, lo - pad), hi + pad]} tick={{ fontSize: 12, fill: '#5b6673' }} width={44} tickFormatter={(v) => `${Math.round(v * 10) / 10}`} />
-            <Tooltip formatter={(v: any) => [`${v} ${trend.unit}`, trend.name]} />
-            <Line type="monotone" dataKey="value" stroke="#1b2430" strokeWidth={2} isAnimationActive={false}
-              dot={(p: any) => <circle key={p.index} cx={p.cx} cy={p.cy} r={5} fill={COLOR[p.payload.status]} stroke="#fff" strokeWidth={1.5} />} />
+            <XAxis dataKey="label" tick={{ fontSize: 12, fill: c.muted }} />
+            <YAxis domain={[Math.max(0, lo - pad), hi + pad]} tick={{ fontSize: 12, fill: c.muted }} width={44} tickFormatter={(v) => `${Math.round(v * 10) / 10}`} />
+            <Tooltip contentStyle={{ background: c.surface, border: `1px solid ${c.line}`, color: c.ink }} formatter={(v: any) => [`${v} ${trend.unit}`, trend.name]} />
+            <Line type="monotone" dataKey="value" stroke={c.ink} strokeWidth={2} isAnimationActive={false}
+              dot={(p: any) => <circle key={p.index} cx={p.cx} cy={p.cy} r={5} fill={COLOR[p.payload.status]} stroke={c.surface} strokeWidth={1.5} />} />
           </LineChart>
         </ResponsiveContainer>
       </div>

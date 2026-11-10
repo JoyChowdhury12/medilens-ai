@@ -3,6 +3,7 @@ import { AuthProvider } from '@/lib/auth';
 import { ConfirmProvider } from '@/components/ConfirmDialog';
 import { ToastProvider } from '@/components/Toast';
 import { LangProvider } from '@/lib/i18n';
+import { THEME_INIT } from '@/lib/theme';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -14,7 +15,8 @@ export const viewport: Viewport = { width: 'device-width', initialScale: 1, them
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="bn">
+    <html lang="bn" suppressHydrationWarning>
+      <head><script dangerouslySetInnerHTML={{ __html: THEME_INIT }} /></head>
       <body>
         <LangProvider>
           <AuthProvider><ToastProvider><ConfirmProvider>{children}</ConfirmProvider></ToastProvider></AuthProvider>

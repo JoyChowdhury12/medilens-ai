@@ -5,6 +5,7 @@ import { ReactNode, useEffect } from 'react';
 import { useAuth } from '@/lib/auth';
 import { useConfirm } from './ConfirmDialog';
 import { useT } from '@/lib/i18n';
+import { useTheme, useTextSize } from '@/lib/theme';
 import Avatar from './Avatar';
 import Icon, { Logo } from './Icon';
 
@@ -22,6 +23,30 @@ export function LangToggle({ className = '' }: { className?: string }) {
     <button onClick={() => setLang(lang === 'bn' ? 'en' : 'bn')} aria-label="Change language"
       className={`inline-flex min-h-[36px] items-center gap-1.5 rounded-full border border-line bg-white px-3 text-sm text-muted hover:bg-wash ${className}`}>
       <Icon name="globe" size={16} />{lang === 'bn' ? 'English' : 'বাংলা'}
+    </button>
+  );
+}
+
+/** Light / dark switch. */
+export function ThemeToggle({ className = '' }: { className?: string }) {
+  const { t } = useT();
+  const { dark, toggle } = useTheme();
+  return (
+    <button onClick={toggle} aria-pressed={dark} aria-label={dark ? t('lightMode') : t('darkMode')} title={dark ? t('lightMode') : t('darkMode')}
+      className={`inline-flex min-h-[36px] min-w-[36px] items-center justify-center rounded-full border border-line bg-white px-2.5 text-muted hover:bg-wash ${className}`}>
+      <Icon name={dark ? 'sun' : 'moon'} size={17} />
+    </button>
+  );
+}
+
+/** Text size switch: normal, large, extra large. */
+export function SizeToggle({ className = '' }: { className?: string }) {
+  const { t } = useT();
+  const { level, next } = useTextSize();
+  return (
+    <button onClick={next} aria-label={t('textSize')} title={t('textSize')}
+      className={`inline-flex min-h-[36px] min-w-[36px] items-center justify-center rounded-full border border-line bg-white px-2.5 font-semibold text-muted hover:bg-wash ${className}`}>
+      <span aria-hidden className="leading-none"><span className="text-[11px]">A</span><span className={level === 0 ? 'text-[14px]' : level === 1 ? 'text-[17px]' : 'text-[20px]'}>A</span></span>
     </button>
   );
 }
@@ -105,8 +130,8 @@ export default function Shell({ children, wide }: { children: ReactNode; wide?: 
             <Avatar name={user.name} src={user.avatar} size={36} />
             <span className="min-w-0 text-sm"><span className="block truncate font-medium">{user.name}</span><span className="block truncate text-muted">{t('navAccount')}</span></span>
           </Link>
-          <div className="flex items-center gap-2">
-            <LangToggle />
+          <div className="flex flex-wrap items-center gap-2">
+            <LangToggle /><ThemeToggle /><SizeToggle />
             <button onClick={logout} className="inline-flex min-h-[36px] items-center gap-1.5 rounded-full px-3 text-sm text-muted hover:bg-wash">
               <Icon name="logout" size={16} />{t('logout')}
             </button>
@@ -118,6 +143,7 @@ export default function Shell({ children, wide }: { children: ReactNode; wide?: 
       <header className="no-print sticky top-0 z-30 flex items-center gap-3 border-b border-line bg-white px-4 py-2.5 lg:hidden">
         <Link href="/" aria-label="MediLens"><Logo size={30} /></Link>
         <div className="min-w-0 flex-1"><ProfileSwitcher uid="who-top" /></div>
+        <SizeToggle /><ThemeToggle />
         <Link href="/account" aria-label={t('navAccount')}><Avatar name={user.name} src={user.avatar} size={34} /></Link>
       </header>
 

@@ -10,7 +10,25 @@ from typing import List, Literal, Optional
 from fastapi import FastAPI, File, HTTPException, UploadFile
 from pydantic import BaseModel
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+
+
+def _load_env_file(path: Path) -> None:
+    """Read settings such as MEDILENS_MODEL_URL from the project's .env file, so they do not have to be typed in every
+    new terminal. Settings already set in the terminal win. The .env file is never committed (see .gitignore)."""
+    import os
+    if not path.exists():
+        return
+    for line in path.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        os.environ.setdefault(key.strip(), value.strip().strip('"').strip("'"))
+
+
+_load_env_file(ROOT / ".env")
 from medilens import local_model  # noqa: E402
 from medilens.pipeline import explain_with_ai, extract_from_image, extract_from_pdf, extract_from_text, interpret  # noqa: E402
 

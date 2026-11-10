@@ -13,10 +13,22 @@ import cv2
 import numpy as np
 import pytesseract
 
-# On Windows, set TESSERACT_CMD to the tesseract.exe path if it is not on PATH, e.g.
-# C:\\Program Files\\Tesseract-OCR\\tesseract.exe
-if os.getenv("TESSERACT_CMD"):
-    pytesseract.pytesseract.tesseract_cmd = os.environ["TESSERACT_CMD"]
+# Where tesseract.exe is: TESSERACT_CMD if set, otherwise the usual Windows install folders are tried.
+def _find_tesseract():
+    if os.getenv("TESSERACT_CMD"):
+        return os.environ["TESSERACT_CMD"]
+    if os.name == "nt":
+        for base in (os.getenv("LOCALAPPDATA", ""), os.getenv("ProgramFiles", r"C:\Program Files"),
+                     os.getenv("ProgramFiles(x86)", r"C:\Program Files (x86)")):
+            exe = os.path.join(base, "Programs", "Tesseract-OCR", "tesseract.exe") if base == os.getenv("LOCALAPPDATA") \
+                else os.path.join(base, "Tesseract-OCR", "tesseract.exe")
+            if base and os.path.exists(exe):
+                return exe
+    return None
+
+
+if _find_tesseract():
+    pytesseract.pytesseract.tesseract_cmd = _find_tesseract()
 
 BLUR_LIMIT = 40.0  # Laplacian variance below this = probably too blurry to read
 

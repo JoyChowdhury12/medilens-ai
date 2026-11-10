@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
 import { useT } from '@/lib/i18n';
-import { rangeLabel, reasonBn } from '@/lib/format';
+import { reasonBn } from '@/lib/format';
 import { Result, Status } from '@/lib/types';
 import Icon from './Icon';
 import RangeBar from './RangeBar';
@@ -29,7 +29,6 @@ export function StatusBadge({ status, direction }: { status: Status; direction?:
 export default function ResultRow({ r }: { r: Result }) {
   const { t, lang } = useT();
   const [open, setOpen] = useState(r.status !== 'normal');
-  const range = rangeLabel(r.rangeLow, r.rangeHigh);
   // flash the card once when the AI text arrives while the person is on the page (not on every visit)
   const before = useRef(r.aiState);
   const [flash, setFlash] = useState(false);
@@ -51,7 +50,6 @@ export default function ResultRow({ r }: { r: Result }) {
           </div>
         </div>
         <RangeBar value={r.value} low={r.rangeLow} high={r.rangeHigh} status={r.status} />
-        {range && <div className="text-sm text-muted">{t('normalRange')}: {range} {r.unit}</div>}
       </button>
       {open && (
         <div className="mt-3 border-l-2 border-line pl-4">

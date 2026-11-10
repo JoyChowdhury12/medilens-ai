@@ -6,7 +6,7 @@ import { useAuth } from '@/lib/auth';
 import { useT } from '@/lib/i18n';
 import Icon, { Logo } from './Icon';
 import GoogleButton from './GoogleButton';
-import { LangSwitch } from './Shell';
+import { LangSwitch, ThemeToggle, SizeToggle } from './Shell';
 
 export default function AuthForm({ mode }: { mode: 'login' | 'register' }) {
   const { t } = useT();
@@ -78,7 +78,7 @@ export default function AuthForm({ mode }: { mode: 'login' | 'register' }) {
 
         <div className="flex flex-1 flex-col items-center justify-center py-8">
           {/* language choice right above the card, where people look first */}
-          <div className="mb-4 flex w-full max-w-[480px] justify-end"><LangSwitch /></div>
+          <div className="mb-4 flex w-full max-w-[480px] items-center justify-end gap-2"><LangSwitch /><SizeToggle className="!min-h-[44px] !min-w-[44px]" /><ThemeToggle className="!min-h-[44px] !min-w-[44px]" /></div>
           <div className="w-full max-w-[480px] rounded-2xl border border-line bg-white p-6 shadow-[0_8px_30px_rgba(22,32,43,0.08)] sm:p-10">
             <h1 className="text-3xl font-bold sm:text-[2rem]">{reg ? t('createTitle') : t('welcomeBack')}</h1>
             <p className="mt-2 text-[17px] text-muted">{reg ? t('registerIntro') : t('loginIntro')}</p>

@@ -2,21 +2,23 @@ import type { Config } from 'tailwindcss';
 
 const config: Config = {
   content: ['./app/**/*.{ts,tsx}', './components/**/*.{ts,tsx}', './lib/**/*.{ts,tsx}'],
+  darkMode: 'class',
   theme: {
     extend: {
       boxShadow: { panel: '0 1px 2px rgba(22,32,43,0.05)' },
       fontFamily: { sans: ['Inter', '"Noto Sans Bengali"', '"Nirmala UI"', 'system-ui', 'sans-serif'] },
+      // Colours are CSS variables (see globals.css) so the dark theme only has to change the values.
       colors: {
-        ink: '#1b2430',
-        muted: '#5b6673',
-        line: '#dde2e8',
-        wash: '#f5f7f9',
-        canvas: '#f3f6f8',
-        brand: { DEFAULT: '#0e6e8c', dark: '#0a566e', tint: '#e6f2f6' },
-        ok: { DEFAULT: '#2b7a4b', tint: '#e8f4ec' },
-        warn: { DEFAULT: '#a86a00', tint: '#fdf3e0' },
-        bad: { DEFAULT: '#b42318', tint: '#fdecea' },
-        crit: { DEFAULT: '#7a0e0e', tint: '#f9dede' },
+        ink: 'rgb(var(--ink) / <alpha-value>)',
+        muted: 'rgb(var(--muted) / <alpha-value>)',
+        line: 'rgb(var(--line) / <alpha-value>)',
+        wash: 'rgb(var(--wash) / <alpha-value>)',
+        canvas: 'rgb(var(--canvas) / <alpha-value>)',
+        brand: { DEFAULT: 'rgb(var(--brand) / <alpha-value>)', dark: 'rgb(var(--brand-dark) / <alpha-value>)', tint: 'rgb(var(--brand-tint) / <alpha-value>)' },
+        ok: { DEFAULT: 'rgb(var(--ok) / <alpha-value>)', tint: 'rgb(var(--ok-tint) / <alpha-value>)' },
+        warn: { DEFAULT: 'rgb(var(--warn) / <alpha-value>)', tint: 'rgb(var(--warn-tint) / <alpha-value>)' },
+        bad: { DEFAULT: 'rgb(var(--bad) / <alpha-value>)', tint: 'rgb(var(--bad-tint) / <alpha-value>)' },
+        crit: { DEFAULT: 'rgb(var(--crit) / <alpha-value>)', tint: 'rgb(var(--crit-tint) / <alpha-value>)' },
       },
     },
   },
